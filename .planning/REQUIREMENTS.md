@@ -92,13 +92,48 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated during roadmap creation) | | |
+| PROJ-01 | Phase 4 | Pending |
+| PROJ-02 | Phase 1 | Pending |
+| PROJ-03 | Phase 4 | Pending |
+| PROJ-04 | Phase 2 | Pending |
+| PROJ-05 | Phase 4 | Pending |
+| PROJ-06 | Phase 4 | Pending |
+| SESS-01 | Phase 2 | Pending |
+| SESS-02 | Phase 2 | Pending |
+| SESS-03 | Phase 2 | Pending |
+| SESS-04 | Phase 4 | Pending |
+| SESS-05 | Phase 4 | Pending |
+| SESS-06 | Phase 2 | Pending |
+| TERM-01 | Phase 2 | Pending |
+| TERM-02 | Phase 2 | Pending |
+| TERM-03 | Phase 2 | Pending |
+| TERM-04 | Phase 4 | Pending |
+| BOARD-01 | Phase 1 | Pending |
+| BOARD-02 | Phase 1 | Pending |
+| BOARD-03 | Phase 1 | Pending |
+| BOARD-04 | Phase 1 | Pending |
+| BOARD-05 | Phase 1 | Pending |
+| BOARD-06 | Phase 1 | Pending |
+| ACT-01 | Phase 3 | Pending |
+| ACT-02 | Phase 3 | Pending |
+| ACT-03 | Phase 3 | Pending |
+| ACT-04 | Phase 3 | Pending |
+| DIST-01 | Phase 5 | Pending |
+| DIST-02 | Phase 5 | Pending |
+| DIST-03 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 29 total
-- Mapped to phases: 0
-- Unmapped: 29 ⚠️ (roadmap pending)
+- Mapped to phases: 29
+- Unmapped: 0 ✓ (100% coverage)
+
+**By Phase:**
+- Phase 1 (Espelho fiel): PROJ-02, BOARD-01, BOARD-02, BOARD-03, BOARD-04, BOARD-05, BOARD-06 (7)
+- Phase 2 (Sessão viva): PROJ-04, SESS-01, SESS-02, SESS-03, SESS-06, TERM-01, TERM-02, TERM-03 (8)
+- Phase 3 (Board interativo): ACT-01, ACT-02, ACT-03, ACT-04 (4)
+- Phase 4 (Casa persistente): PROJ-01, PROJ-03, PROJ-05, PROJ-06, SESS-04, SESS-05, TERM-04 (7)
+- Phase 5 (Comunidade): DIST-01, DIST-02, DIST-03 (3)
 
 ---
 *Requirements defined: 2026-07-22*
-*Last updated: 2026-07-22 after initial definition*
+*Last updated: 2026-07-22 after roadmap creation (29/29 mapped)*
