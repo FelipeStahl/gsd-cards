@@ -20,7 +20,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **SESS-01**: Usuário vê as sessões do Claude CLI do projeto selecionado na sidebar
 - [ ] **SESS-02**: Usuário cria nova sessão pela sidebar (spawn do `claude` no diretório do projeto)
-- [ ] **SESS-03**: Usuário navega entre sessões sem fechar nenhuma — terminais continuam vivos em background
+- [x] **SESS-03**: Usuário navega entre sessões sem fechar nenhuma — terminais continuam vivos em background
 - [ ] **SESS-04**: Sessões persistem entre aberturas do app e são restauradas ao reabrir (snapshot do buffer + histórico via `claude --resume`, restauração lazy)
 - [ ] **SESS-05**: Usuário renomeia sessões
 - [x] **SESS-06**: Usuário arquiva/exclui sessões, com encerramento limpo da árvore de processos (sem zombie processes)
@@ -100,7 +100,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROJ-06 | Phase 4 | Pending |
 | SESS-01 | Phase 2 | Complete |
 | SESS-02 | Phase 2 | Pending |
-| SESS-03 | Phase 2 | Pending |
+| SESS-03 | Phase 2 | Complete |
 | SESS-04 | Phase 4 | Pending |
 | SESS-05 | Phase 4 | Pending |
 | SESS-06 | Phase 2 | Complete |

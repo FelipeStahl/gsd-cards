@@ -77,7 +77,7 @@ Plans:
   4. Usuário busca texto no scrollback do terminal e encontra ocorrências anteriores.
   5. Usuário arquiva/exclui uma sessão e a árvore de processos é encerrada de forma limpa — nenhum processo zumbi permanece, inclusive ao fechar o app no Windows (tree-kill validado como critério de fundação).
 
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans executed
 Plans:
 **Wave 1**
 
@@ -95,7 +95,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 02-06-PLAN.md — Foco multi-sessão em background (SESS-03) + affordances arquivar/excluir (SESS-06 UI)
+- [x] 02-06-PLAN.md — Foco multi-sessão em background (SESS-03) + affordances arquivar/excluir (SESS-06 UI)
 
 **UI hint**: yes
 
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Espelho fiel | 8/8 | In Progress|  |
-| 2. Sessão viva | 5/6 | In Progress|  |
+| 2. Sessão viva | 6/6 | In Progress|  |
 | 3. Board interativo | 0/TBD | Not started | - |
 | 4. Casa persistente | 0/TBD | Not started | - |
 | 5. Comunidade | 0/TBD | Not started | - |
