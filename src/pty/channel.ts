@@ -25,6 +25,16 @@ function toBytes(message: RawChannelMessage): Uint8Array {
 }
 
 /**
+ * Handler atual de bytes por sessão — indireção que permite ao algoritmo de
+ * foco (`focus-algorithm.ts`, SESS-03) redirecionar o destino dos bytes
+ * (write direto no terminal em foco vs push num `backgroundBuffer` em
+ * memória) sem nunca recriar o `Channel` nem o processo PTY. `spawnSession`
+ * só é chamado UMA VEZ por sessão (na criação); toda troca de foco depois
+ * disso só troca a entrada deste mapa via `setSessionBytesHandler`.
+ */
+const bytesHandlers = new Map<string, (data: Uint8Array) => void>();
+
+/**
  * Cria um `Channel` dedicado a esta sessão e pede ao backend para subir o
  * `claude` num PTY real no `cwd` fornecido. `cwd` DEVE ser o `root` já
  * canonicalizado por `validateProjectRoot` (Fase 1) — nunca um caminho cru
@@ -36,8 +46,25 @@ export function spawnSession(
   onBytes: (data: Uint8Array) => void,
 ): Promise<void> {
   const onEvent = new Channel<RawChannelMessage>();
-  onEvent.onmessage = (message) => onBytes(toBytes(message));
+  bytesHandlers.set(sessionId, onBytes);
+  onEvent.onmessage = (message) => {
+    bytesHandlers.get(sessionId)?.(toBytes(message));
+  };
   return invoke("spawn_session", { sessionId, cwd, onEvent });
+}
+
+/**
+ * Redireciona o destino dos bytes recebidos por uma sessão já viva — usado
+ * pelo algoritmo de foco (`focus-algorithm.ts`, SESS-03): `terminal.write`
+ * direto quando a sessão ganha foco, empilhar num `backgroundBuffer` quando
+ * ela perde foco e nenhuma instância de terminal está montada. Nunca recria
+ * o `Channel` nem afeta o processo PTY em si — é só uma troca de callback.
+ */
+export function setSessionBytesHandler(
+  sessionId: string,
+  onBytes: (data: Uint8Array) => void,
+): void {
+  bytesHandlers.set(sessionId, onBytes);
 }
 
 /** Envia texto digitado/colado no terminal de volta ao processo (stdin do PTY). */
@@ -61,5 +88,10 @@ export async function killSession(sessionId: string): Promise<void> {
     await invoke("kill_session", { sessionId });
   } catch {
     // Sessão já encerrada/nunca existiu — não é erro.
+  } finally {
+    // Sem isso, o handler de bytes desta sessão (e o buffer que ele
+    // eventualmente empilha) vazaria indefinidamente no mapa deste módulo
+    // mesmo depois do processo morrer (T-02-02).
+    bytesHandlers.delete(sessionId);
   }
 }

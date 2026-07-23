@@ -1,6 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const invokeMock = vi.fn();
+const testSessionCounter = { current: 0 };
+
+/** Cada `describe` usa um sessionId novo — evita que o `bytesHandlers` module-level do `channel.ts` vaze estado entre testes que não passam por `killSession`. */
+function freshSessionId(): string {
+  testSessionCounter.current += 1;
+  return `session-test-${testSessionCounter.current}`;
+}
 
 /** Duplo mínimo de `Channel` — só o suficiente para capturar o `onmessage`
  * atribuído por `spawnSession` e disparar mensagens manualmente no teste,
@@ -84,5 +91,52 @@ describe("killSession", () => {
     invokeMock.mockRejectedValue(new Error("NotFound"));
     await expect(killSession("session-1")).resolves.toBeUndefined();
     expect(invokeMock).toHaveBeenCalledWith("kill_session", { sessionId: "session-1" });
+  });
+});
+
+describe("setSessionBytesHandler (redirecionamento do foco — SESS-03)", () => {
+  it("redireciona o onmessage de uma sessão já viva sem recriar o Channel/spawn", async () => {
+    const { setSessionBytesHandler } = await import("./channel");
+    const sessionId = freshSessionId();
+    invokeMock.mockResolvedValue(undefined);
+
+    const initialReceived: Uint8Array[] = [];
+    await spawnSession(sessionId, "/repo", (bytes) => initialReceived.push(bytes));
+    const [, args] = invokeMock.mock.calls[0] as [string, { onEvent: FakeChannel<unknown> }];
+
+    args.onEvent.onmessage?.([1]);
+    expect(initialReceived).toHaveLength(1);
+
+    const redirected: Uint8Array[] = [];
+    setSessionBytesHandler(sessionId, (bytes) => redirected.push(bytes));
+
+    args.onEvent.onmessage?.([2]);
+    expect(initialReceived).toHaveLength(1); // handler antigo não recebe mais nada
+    expect(redirected).toHaveLength(1);
+    expect(Array.from(redirected[0])).toEqual([2]);
+    expect(invokeMock).toHaveBeenCalledTimes(1); // nunca chamou spawn_session de novo
+  });
+
+  it("killSession remove o handler registrado — mensagens tardias não vazam pra um handler morto", async () => {
+    const { setSessionBytesHandler } = await import("./channel");
+    const sessionId = freshSessionId();
+    invokeMock.mockResolvedValueOnce(undefined);
+
+    const received: Uint8Array[] = [];
+    await spawnSession(sessionId, "/repo", (bytes) => received.push(bytes));
+    const [, args] = invokeMock.mock.calls[0] as [string, { onEvent: FakeChannel<unknown> }];
+
+    invokeMock.mockResolvedValueOnce(undefined);
+    await killSession(sessionId);
+
+    // Sem um handler registrado (removido por killSession), a mensagem
+    // tardia não lança nem é silenciosamente entregue ao array antigo.
+    args.onEvent.onmessage?.([3]);
+    expect(received).toHaveLength(0);
+
+    const freshHandlerCalls: Uint8Array[] = [];
+    setSessionBytesHandler(sessionId, (bytes) => freshHandlerCalls.push(bytes));
+    args.onEvent.onmessage?.([4]);
+    expect(freshHandlerCalls).toHaveLength(1);
   });
 });
