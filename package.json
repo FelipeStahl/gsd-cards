@@ -2,6 +2,27 @@
   "name": "gsd-cards",
   "private": true,
   "version": "0.1.0",
+  "description": "Desktop app that gives a graphical interface to the Claude CLI + gsd-core workflow: a hierarchical kanban board that mirrors your .planning/ artifacts in real time.",
+  "license": "MIT",
+  "author": "Felipe Stahlhofer",
+  "homepage": "https://github.com/FelipeStahl/gsd-cards#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FelipeStahl/gsd-cards.git"
+  },
+  "bugs": {
+    "url": "https://github.com/FelipeStahl/gsd-cards/issues"
+  },
+  "keywords": [
+    "gsd",
+    "gsd-core",
+    "claude",
+    "claude-cli",
+    "kanban",
+    "tauri",
+    "desktop",
+    "developer-tools"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",

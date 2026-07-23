@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "GSD Cards — board kanban hierárquico que espelha o .planning/ do gsd-core em tempo real"
 authors = ["GSD Cards contributors"]
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/FelipeStahl/gsd-cards"
 
 [lib]
 name = "gsd_cards_lib"
