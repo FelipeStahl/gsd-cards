@@ -7,6 +7,7 @@ mod planning_watcher;
 pub mod process_guard;
 mod project;
 mod pty;
+mod sessions;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -24,6 +25,7 @@ pub fn run() {
             pty::resize_session,
             pty::kill_session,
             dependencies::check_claude_on_path,
+            sessions::register_sessions_scope,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
