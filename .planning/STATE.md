@@ -127,6 +127,13 @@ None yet.
 - [Phase 2]: Zombie processes do PTY / ConPTY no Windows — tree-kill e handlers de saída como critério de fundação, testar em máquina Windows real.
 - [Phase 02-05]: Nenhum plano da Fase 2 (01-06) construiu o TerminalPane/chrome header (02-UI-SPEC.md) — o ícone Buscar 32x32 não existe; TerminalSearchBar abre só via Ctrl+F/Cmd+F. Registrado em WINDOWS.md.
 
+## Deferred Verification
+
+| Phase | State | Resume |
+|-------|-------|--------|
+| 1 | verification_deferred_human | /gsd-verify-work 1 |
+| 2 | verification_deferred_human | /gsd-verify-work 2 |
+
 ## Deferred Items
 
 Items acknowledged and carried forward from previous milestone close:
