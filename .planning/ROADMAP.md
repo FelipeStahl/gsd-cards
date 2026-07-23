@@ -32,7 +32,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Usuário expande um card de fase e vê a hierarquia de 3 níveis (fase → planos → tarefas) derivada dos artefatos reais, com indicadores de progresso de projeto e de fases.
   4. O board atualiza sozinho quando o `.planning/` muda no disco, sem refresh manual (file watching debounced, sem piscar durante rajadas de escrita do GSD).
   5. Diante de um artefato não parseável, o board exibe aviso/raw em vez de mentir silenciosamente, e o usuário abre a visualização renderizada de PLAN/SUMMARY/VERIFICATION a partir do card.
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] 01-01-PLAN.md — Fundação executável: toolchain Rust/MSVC, scaffold Tauri v2 + React + TS, tokens do UI-SPEC, i18n e CI multiplataforma
+- [ ] 01-02-PLAN.md — Abrir e validar um projeto GSD (PROJ-02), esqueleto de layout e header com dados reais de STATE.md
+- [ ] 01-03-PLAN.md — Board kanban de 4 colunas com cards de fase derivados da regra de status do gsd-core
+- [ ] 01-04-PLAN.md — Espelho vivo: watcher Rust debounced, reprocessamento incremental e indicador de sincronização
+- [ ] 01-05-PLAN.md — Painel de detalhe hierárquico e modal de artefato com render GFM e modo raw
+- [ ] 01-06-PLAN.md — Histórico de milestones e guarda de regressão contra evolução de formato do gsd-core
 **UI hint**: yes
 
 ### Phase 2: Sessão viva
@@ -95,7 +102,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Espelho fiel | 0/TBD | Not started | - |
+| 1. Espelho fiel | 0/6 | Not started | - |
 | 2. Sessão viva | 0/TBD | Not started | - |
 | 3. Board interativo | 0/TBD | Not started | - |
 | 4. Casa persistente | 0/TBD | Not started | - |
