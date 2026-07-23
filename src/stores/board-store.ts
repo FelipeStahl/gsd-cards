@@ -6,14 +6,20 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 
 import {
+  listPlanningDir,
   readPlanningText,
   validateProjectRoot,
   type ProjectOpenErrorKind,
 } from "../planning/read";
-import { roadmapPath, statePath } from "../planning/paths";
+import { phasesDir, planningDir, roadmapPath, statePath } from "../planning/paths";
 import { parseStateFile } from "../planning/parser/state";
 import { parseRoadmap, type RoadmapModel } from "../planning/parser/roadmap";
-import { scanAllPhases, type PhaseScanEntry } from "../planning/phase-scan";
+import {
+  parsePhaseDirName,
+  scanAllPhases,
+  scanPhaseDir,
+  type PhaseScanEntry,
+} from "../planning/phase-scan";
 import {
   deriveDiskStatus,
   toBoardBadge,
@@ -21,7 +27,8 @@ import {
   type BoardColumnId,
   type PhaseDirSignals,
 } from "../planning/status";
-import { unrecognized } from "../planning/parse-result";
+import { unrecognized, type ParseIssue } from "../planning/parse-result";
+import { classifyChangedPath, startWatching, stopWatching } from "../planning/watch";
 import type { MilestoneRef, PhaseBlocker, PhaseModel, ProjectStateModel } from "../planning/model";
 
 export type BoardStatus = "idle" | "opening" | "open" | "error";
@@ -31,22 +38,29 @@ export interface ProjectStoreError {
   message: string;
 }
 
-/** Preenchido pelo Plano 04 (watcher + debounce); campo declarado agora para não disputar este arquivo depois. */
+/** Saúde do file watcher (D-14, D-16) — nunca finge estar vivo enquanto degradado. */
 export interface SyncState {
-  status: "healthy" | "stale" | "unknown";
-  lastSyncedAt: string | null;
+  state: "idle" | "healthy" | "degraded";
+  lastSyncedAt: number | null;
+  degradedSince: number | null;
+  reason: string | null;
 }
 
 interface BoardStoreState {
   status: BoardStatus;
   project: ProjectStateModel | null;
   error: ProjectStoreError | null;
-  /** Preenchido pelo Plano 04 — ids de fase com glow de atualização em tempo real (D-13). */
+  /** Ids de fase com glow de atualização em tempo real (D-13), limpos automaticamente após a janela do glow. */
   recentlyUpdatedPhaseIds: string[];
-  /** Preenchido pelo Plano 04 — saúde do file watcher (D-16). */
+  /** Saúde do file watcher (D-16). */
   sync: SyncState;
   openProject: (root: string) => Promise<void>;
   closeProject: () => void;
+  /** Aplica um lote de caminhos alterados (evento `planning:changed`) em uma única transição de estado. */
+  reprocessPaths: (paths: string[]) => Promise<void>;
+  markSyncHealthy: (timestamp: number) => void;
+  markSyncDegraded: (reason: string) => void;
+  reconnectWatcher: () => Promise<void>;
 }
 
 function deriveProjectName(root: string): string {
@@ -224,13 +238,131 @@ async function loadRoadmapModel(root: string): Promise<RoadmapModel | null> {
   }
 }
 
+/**
+ * Varre só os diretórios de fase cujo número está em `numbers` —
+ * reprocessamento incremental (Plano 04): um lote restrito à fase `02` nunca
+ * chama `scanPhaseDir` para o diretório da fase `01`. `listPlanningDir(dir)`
+ * ainda lista o diretório pai `.planning/phases/` inteiro (operação barata,
+ * só nomes), mas a leitura profunda de arquivos (`scanPhaseDir`) só acontece
+ * para as fases citadas no lote.
+ */
+async function scanPhasesByNumber(
+  root: string,
+  numbers: Set<number>,
+): Promise<PhaseScanEntry[]> {
+  const dir = phasesDir(root);
+
+  let entries: Awaited<ReturnType<typeof listPlanningDir>>;
+  try {
+    entries = await listPlanningDir(dir);
+  } catch {
+    return [];
+  }
+
+  const results: PhaseScanEntry[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory) continue;
+    const parsed = parsePhaseDirName(entry.name);
+    if (!parsed || !numbers.has(parsed.number)) continue;
+
+    try {
+      const { signals, issues } = await scanPhaseDir(dir, entry.name);
+      results.push({ dirName: entry.name, ...parsed, signals, issues });
+    } catch (error) {
+      results.push({
+        dirName: entry.name,
+        ...parsed,
+        signals: emptySignals(),
+        issues: [
+          {
+            path: `${dir}/${entry.name}`,
+            reason: `Falha ao varrer diretório da fase: ${String(error)}`,
+          },
+        ],
+      });
+    }
+  }
+  return results;
+}
+
+/**
+ * Mescla um subconjunto recém-varrido de fases sobre o array de `PhaseModel[]`
+ * já existente no store, em vez de reconstruir tudo — preserva `name`/
+ * `requirementIds`/`isInserted` das fases não tocadas por este lote. Uma fase
+ * nova (diretório que apareceu sem estar no ROADMAP ainda) é adicionada com
+ * o mesmo fallback de nome de `buildPhaseModels`.
+ */
+function mergePhaseModels(
+  existing: PhaseModel[],
+  scannedSubset: PhaseScanEntry[],
+  blockers: PhaseBlocker[],
+): { phases: PhaseModel[]; affectedIds: string[] } {
+  if (scannedSubset.length === 0) {
+    return { phases: existing, affectedIds: [] };
+  }
+
+  const byNumber = new Map<number, PhaseModel>();
+  for (const model of existing) {
+    byNumber.set(model.number, model);
+  }
+
+  const affectedIds: string[] = [];
+
+  for (const entry of scannedSubset) {
+    const diskStatus = deriveDiskStatus(true, entry.signals);
+    const badge = toBoardBadge(diskStatus, entry.signals.isActive);
+    const previous = byNumber.get(entry.number);
+    const column = toBoardColumn(badge, previous?.column);
+    const entryBlockers = blockers.filter((blocker) => blocker.phases.includes(entry.number));
+
+    const updated: PhaseModel = previous
+      ? {
+          ...previous,
+          id: entry.padded,
+          diskStatus,
+          badge,
+          column,
+          planCount: entry.signals.planCount,
+          summaryCount: entry.signals.summaryCount,
+          blockers: entryBlockers,
+          issues: entry.issues,
+        }
+      : {
+          id: entry.padded,
+          number: entry.number,
+          name: humanizeSlug(entry.slug),
+          diskStatus,
+          badge,
+          column,
+          planCount: entry.signals.planCount,
+          summaryCount: entry.signals.summaryCount,
+          requirementIds: [],
+          isInserted: !Number.isInteger(entry.number),
+          blockers: entryBlockers,
+          issues: entry.issues,
+        };
+
+    byNumber.set(entry.number, updated);
+    affectedIds.push(updated.id);
+  }
+
+  const merged = Array.from(byNumber.values()).sort((a, b) => a.number - b.number);
+  return { phases: merged, affectedIds };
+}
+
+/** Janela do glow de atualização em tempo real (D-13) — ~1000ms, sem toast. */
+const GLOW_WINDOW_MS = 1000;
+
+/** Intervalo crescente de auto-retry da reconexão (D-16) — satura em 15s, silencioso até dar certo. */
+const RECONNECT_BACKOFF_MS = [1000, 2000, 5000, 10000, 15000];
+
 export const useBoardStore = create<BoardStoreState>()(
-  immer((set) => ({
+  immer((set, get) => ({
     status: "idle",
     project: null,
     error: null,
     recentlyUpdatedPhaseIds: [],
-    sync: { status: "unknown", lastSyncedAt: null },
+    sync: { state: "idle", lastSyncedAt: null, degradedSince: null, reason: null },
 
     openProject: async (root: string) => {
       set((state) => {
@@ -284,6 +416,18 @@ export const useBoardStore = create<BoardStoreState>()(
           }
           state.status = "open";
         });
+
+        // Board (Plano 04): passa a observar `.planning/` desta raiz assim
+        // que o projeto abre com sucesso — nunca antes (o watcher só deve
+        // observar uma raiz já validada, nunca um caminho cru).
+        try {
+          await startWatching(planningDir(validated.root));
+          get().markSyncHealthy(Date.now());
+        } catch {
+          // Falha ao iniciar o watcher não impede o board de abrir com o
+          // snapshot atual — só fica sem tempo real até uma reconexão.
+          get().markSyncDegraded("Não foi possível iniciar o observador de arquivos");
+        }
       } catch (error) {
         set((state) => {
           state.status = "error";
@@ -293,14 +437,244 @@ export const useBoardStore = create<BoardStoreState>()(
     },
 
     closeProject: () => {
+      void stopWatching();
       set((state) => {
         state.status = "idle";
         state.project = null;
         state.error = null;
+        state.sync = { state: "idle", lastSyncedAt: null, degradedSince: null, reason: null };
+        state.recentlyUpdatedPhaseIds = [];
       });
+    },
+
+    reprocessPaths: async (paths: string[]) => {
+      const projectRoot = get().project?.root;
+      if (!projectRoot) return;
+
+      const classifications = paths.map((path) => classifyChangedPath(path, projectRoot));
+      const needsState = classifications.some((c) => c.kind === "state");
+      const needsRoadmap = classifications.some((c) => c.kind === "roadmap");
+      const phaseNumbers = new Set<number>();
+      for (const classification of classifications) {
+        if (classification.kind === "phase") {
+          const number = Number.parseFloat(classification.phaseId);
+          if (Number.isFinite(number)) phaseNumbers.add(number);
+        }
+      }
+
+      // Lote inteiro classificado como `milestones`/`other` — nada a
+      // reprocessar nesta fase (Plano 06 cuida de milestones); nunca aplica
+      // uma transição de estado vazia.
+      if (!needsState && !needsRoadmap && phaseNumbers.size === 0) return;
+
+      const current = get().project;
+      if (!current) return;
+
+      const newIssues: ParseIssue[] = [];
+
+      let blockers = current.blockers;
+      let milestone = current.milestone;
+      let currentPhase = current.currentPhase;
+      let currentPhaseName = current.currentPhaseName;
+      let progress = current.progress;
+      let blockersChanged = false;
+
+      if (needsState) {
+        const sp = statePath(current.root);
+        try {
+          const raw = await readPlanningText(sp);
+          const parsedState = parseStateFile(raw, sp);
+          if (parsedState.kind === "unrecognized") {
+            // Falha localizada (D-15): o estado anterior de milestone/fase/
+            // progresso/blockers é preservado — só a issue é registrada.
+            newIssues.push(...parsedState.issues);
+          } else {
+            const parsed = parsedState.value;
+            milestone = parsed.milestone;
+            currentPhase = parsed.currentPhase;
+            currentPhaseName = parsed.currentPhaseName;
+            progress = parsed.progress;
+            blockers = parsed.blockers;
+            blockersChanged = true;
+          }
+        } catch (error) {
+          newIssues.push({
+            path: sp,
+            reason: `Falha ao reler STATE.md: ${String(error)}`,
+          });
+        }
+      }
+
+      let phases = current.phases;
+      let roadmapRebuilt = false;
+
+      if (needsRoadmap) {
+        const roadmapModel = await loadRoadmapModel(current.root);
+        if (roadmapModel) {
+          const scannedAll = await scanAllPhases(current.root);
+          phases = buildPhaseModels(roadmapModel, scannedAll, blockers);
+          roadmapRebuilt = true;
+        } else {
+          // Releitura do ROADMAP.md falhou (arquivo truncado no meio de uma
+          // escrita, ou estrutura irreconhecível) — mantém o board no último
+          // estado bom em vez de derrubá-lo (D-15).
+          newIssues.push({
+            path: roadmapPath(current.root),
+            reason: "Falha ao reler ou interpretar ROADMAP.md — mantendo o board no último estado bom",
+          });
+        }
+      }
+
+      let affectedIds: string[] = [];
+      if (phaseNumbers.size > 0 && !roadmapRebuilt) {
+        const scannedSubset = await scanPhasesByNumber(current.root, phaseNumbers);
+        const merged = mergePhaseModels(phases, scannedSubset, blockers);
+        phases = merged.phases;
+        affectedIds = merged.affectedIds;
+      } else if (blockersChanged) {
+        // STATE.md mudou os blockers mas nenhuma fase específica foi tocada
+        // neste lote — reaplica o filtro de blockers sobre o array atual
+        // (sem I/O extra, um blocker novo pode citar qualquer fase).
+        phases = phases.map((phase) => ({
+          ...phase,
+          blockers: blockers.filter((blocker) => blocker.phases.includes(phase.number)),
+        }));
+      }
+
+      const syncedAt = Date.now();
+
+      // Transição única (immer) para o lote inteiro — o que impede o board
+      // de piscar durante uma rajada de escritas do GSD (Pitfall 1/T-01-05c):
+      // React re-renderiza uma vez por lote estável, nunca uma vez por arquivo.
+      set((state) => {
+        if (!state.project) return;
+        state.project.milestone = milestone;
+        state.project.currentPhase = currentPhase;
+        state.project.currentPhaseName = currentPhaseName;
+        state.project.progress = progress;
+        state.project.blockers = blockers;
+        state.project.phases = phases;
+        if (newIssues.length > 0) {
+          state.project.issues = [...state.project.issues, ...newIssues];
+        }
+        state.sync.state = "healthy";
+        state.sync.lastSyncedAt = syncedAt;
+        state.sync.degradedSince = null;
+        state.sync.reason = null;
+        state.recentlyUpdatedPhaseIds = affectedIds;
+      });
+
+      if (affectedIds.length > 0) {
+        setTimeout(() => {
+          set((state) => {
+            const same =
+              state.recentlyUpdatedPhaseIds.length === affectedIds.length &&
+              state.recentlyUpdatedPhaseIds.every((id, index) => id === affectedIds[index]);
+            if (same) {
+              state.recentlyUpdatedPhaseIds = [];
+            }
+          });
+        }, GLOW_WINDOW_MS);
+      }
+    },
+
+    markSyncHealthy: (timestamp: number) => {
+      set((state) => {
+        state.sync.state = "healthy";
+        state.sync.lastSyncedAt = timestamp;
+        state.sync.degradedSince = null;
+        state.sync.reason = null;
+      });
+    },
+
+    markSyncDegraded: (reason: string) => {
+      const wasAlreadyDegraded = get().sync.state === "degraded";
+      set((state) => {
+        state.sync.state = "degraded";
+        state.sync.degradedSince = Date.now();
+        state.sync.reason = reason;
+        // `project` propositalmente intocado — o board congela no último
+        // estado bom em vez de fingir estar sincronizado (D-16).
+      });
+      if (!wasAlreadyDegraded) {
+        scheduleAutoRetry(0);
+      }
+    },
+
+    reconnectWatcher: async () => {
+      const project = get().project;
+      if (!project) return;
+
+      try {
+        await startWatching(planningDir(project.root));
+
+        // Releitura completa: mudanças podem ter sido perdidas durante a
+        // degradação (o watcher esteve cego, não há lote de caminhos para
+        // reprocessar incrementalmente).
+        const roadmapModel = await loadRoadmapModel(project.root);
+        const scannedPhases = await scanAllPhases(project.root);
+
+        const sp = statePath(project.root);
+        let milestone = project.milestone;
+        let currentPhase = project.currentPhase;
+        let currentPhaseName = project.currentPhaseName;
+        let progress = project.progress;
+        let blockers = project.blockers;
+        let issues = project.issues;
+        try {
+          const raw = await readPlanningText(sp);
+          const parsedState = parseStateFile(raw, sp);
+          if (parsedState.kind === "ok") {
+            const parsed = parsedState.value;
+            milestone = parsed.milestone;
+            currentPhase = parsed.currentPhase;
+            currentPhaseName = parsed.currentPhaseName;
+            progress = parsed.progress;
+            blockers = parsed.blockers;
+            issues = parsed.issues;
+          }
+        } catch {
+          // Preserva o último STATE.md bom conhecido — reconectar não deve
+          // quebrar o board se a releitura falhar de novo.
+        }
+
+        const phases = buildPhaseModels(roadmapModel, scannedPhases, blockers);
+
+        set((state) => {
+          if (!state.project) return;
+          state.project.milestone = milestone;
+          state.project.currentPhase = currentPhase;
+          state.project.currentPhaseName = currentPhaseName;
+          state.project.progress = progress;
+          state.project.blockers = blockers;
+          state.project.phases = phases;
+          state.project.issues = issues;
+          state.sync.state = "healthy";
+          state.sync.lastSyncedAt = Date.now();
+          state.sync.degradedSince = null;
+          state.sync.reason = null;
+        });
+      } catch {
+        // Reconexão falhou — permanece degradado; o auto-retry em background
+        // tenta de novo, silenciosamente, no próximo intervalo (D-16).
+      }
     },
   })),
 );
+
+/** Auto-retry silencioso em background (D-16) — só muda a apresentação quando a reconexão de fato funciona. */
+function scheduleAutoRetry(attempt: number): void {
+  const delay = RECONNECT_BACKOFF_MS[Math.min(attempt, RECONNECT_BACKOFF_MS.length - 1)];
+  setTimeout(() => {
+    const state = useBoardStore.getState();
+    if (state.sync.state !== "degraded") return;
+    void state.reconnectWatcher().then(() => {
+      if (useBoardStore.getState().sync.state === "degraded") {
+        scheduleAutoRetry(attempt + 1);
+      }
+    });
+  }, delay);
+}
 
 function toStoreError(error: unknown): ProjectStoreError {
   if (
