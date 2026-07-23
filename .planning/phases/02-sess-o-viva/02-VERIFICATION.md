@@ -1,13 +1,14 @@
 ---
 phase: 02-sess-o-viva
 verified: 2026-07-23T18:35:00Z
-status: gaps_found
-score: 26/27 must-haves verified
+status: human_needed
+score: 26/27 must-haves verified (1 overridden by user descope decision → human UAT remaining)
 behavior_unverified: 0
-overrides_applied: 0
+overrides_applied: 1
 gaps:
   - truth: "A TerminalSearchBar abre via ícone/Ctrl+F (TERM-03, 02-05-PLAN.md must_haves.truths)"
-    status: failed
+    status: overridden
+    override: "Descope aceito pelo usuário (2026-07-23): Ctrl+F/Cmd+F satisfaz TERM-03 funcionalmente (search.test.tsx, 10 testes verdes; ROADMAP Success Criterion #4 OK). O ícone de toggle depende de um chrome-header (TerminalPane, 02-UI-SPEC.md ## Terminal Chrome) fora do escopo dos 6 planos da Fase 2 — adiado para uma fase de polish/chrome futura. Não é regressão funcional; a busca no scrollback funciona."
     reason: "Só o atalho de teclado (Ctrl+F/Cmd+F, via attachCustomKeyEventHandler) abre a TerminalSearchBar. Nenhum ícone/botão de busca existe em nenhum dos 6 planos executados da Fase 2 — TerminalView.tsx monta o xterm.js direto dentro do <aside> do DrawerRail, sem nenhum componente de chrome/header (o 'TerminalPane' descrito em 02-UI-SPEC.md ## Terminal Chrome nunca foi construído). Já auto-disclosed pelo próprio executor: 02-05-SUMMARY.md ('Issues Encountered') e WINDOWS.md #2 (status: open, não waived)."
     artifacts:
       - path: "src/components/terminal/TerminalView.tsx"
@@ -36,7 +37,7 @@ human_verification:
 
 **Phase Goal:** Usuário cria sessões do Claude na sidebar e conversa com o `claude` interativo em um terminal real embutido, com múltiplos terminais vivos em paralelo e encerramento limpo da árvore de processos.
 **Verified:** 2026-07-23T18:35:00Z
-**Status:** gaps_found
+**Status:** human_needed — the single automated gap (TERM-03 search-open icon) was **overridden by explicit user descope decision** on 2026-07-23 (Ctrl+F satisfies TERM-03 functionally; the icon needs a TerminalPane chrome-header outside this phase's scope). 5 backstop items await human UAT via `/gsd-verify-work 2`.
 **Re-verification:** No — initial verification
 
 ## Note on ROADMAP `mode: mvp` goal format
