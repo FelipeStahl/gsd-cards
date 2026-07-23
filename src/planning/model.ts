@@ -4,6 +4,7 @@
 
 import type { ParseIssue, ParseResult } from "./parse-result";
 import type { BoardBadge, BoardColumnId, DiskStatus } from "./status";
+import type { ArchivedMilestone } from "./parser/milestones";
 
 /** Espelha literalmente o frontmatter `progress` de STATE.md — sem recálculo. */
 export interface ProjectProgress {
@@ -45,10 +46,18 @@ export interface PhaseModel {
   issues: ParseIssue[];
 }
 
-/** Mínimo necessário nesta fase — o Plano 06 preenche o histórico completo de milestones. */
-export interface MilestoneRef {
-  id: string;
-  name: string;
+/**
+ * Um milestone arquivado (Plano 06, D-08), com os dados de
+ * `scanArchivedMilestones` (fases/status coarse — a fonte primária de
+ * exibição na faixa de histórico) enriquecidos, quando disponíveis, pelo
+ * nome/data de envio do índice `.planning/MILESTONES.md`
+ * (`parseMilestonesIndex`). `name`/`shippedDate` ficam `null` quando o índice
+ * não existe ou não tem uma entrada correspondente para esta versão — a
+ * faixa de histórico segue funcional só com os dados do roadmap arquivado.
+ */
+export interface MilestoneHistoryEntry extends ArchivedMilestone {
+  name: string | null;
+  shippedDate: string | null;
 }
 
 export interface ProjectStateModel {
@@ -60,6 +69,6 @@ export interface ProjectStateModel {
   progress: ParseResult<ProjectProgress>;
   blockers: PhaseBlocker[];
   phases: PhaseModel[];
-  milestones: MilestoneRef[];
+  milestones: MilestoneHistoryEntry[];
   issues: ParseIssue[];
 }
