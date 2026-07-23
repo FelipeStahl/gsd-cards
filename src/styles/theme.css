@@ -1,0 +1,56 @@
+/* Design tokens — fonte literal: .planning/phases/01-espelho-fiel/01-UI-SPEC.md */
+
+@theme {
+  /* Spacing scale (múltiplos de 4) — ## Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+
+  /* Typography — ## Typography (apenas pesos 400 e 600) */
+  --font-size-label: 12px;
+  --line-height-label: 1.4;
+  --font-weight-label: 600;
+
+  --font-size-body: 14px;
+  --line-height-body: 1.5;
+  --font-weight-body: 400;
+
+  --font-size-heading: 18px;
+  --line-height-heading: 1.3;
+  --font-weight-heading: 600;
+
+  --font-size-display: 24px;
+  --line-height-display: 1.2;
+  --font-weight-display: 600;
+
+  /* Font families — self-hosted via @fontsource-variable/* */
+  --font-family-sans:
+    "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-family-mono:
+    "JetBrains Mono Variable", ui-monospace, "Cascadia Code", monospace;
+}
+
+/* Color tokens — ## Color. App segue o tema do SO via prefers-color-scheme (D-04, sem toggle manual nesta fase). */
+:root {
+  --color-dominant: #ffffff;
+  --color-secondary: #f4f4f5;
+  --color-accent: #6366f1;
+  --color-warning: #f59e0b;
+  --color-success: #10b981;
+  --color-destructive: #ef4444;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-dominant: #0b0d10;
+    --color-secondary: #18191c;
+    --color-accent: #818cf8;
+    --color-warning: #fbbf24;
+    --color-success: #34d399;
+    --color-destructive: #f87171;
+  }
+}

@@ -1,0 +1,12 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
+body {
+  margin: 0;
+  background-color: var(--color-dominant);
+  color-scheme: light dark;
+  font-family: var(--font-family-sans);
+}
