@@ -18,8 +18,25 @@ interface DetailStoreState {
   treeByPhaseId: Record<string, ParseResult<PhaseArtifactTree>>;
   loading: Record<string, boolean>;
   artifactContent: Record<string, ParseResult<string>>;
+  /** Mapa companheiro de `artifactContent`: fase dona de cada caminho cacheado, usado para invalidar por fase quando `recentlyUpdatedPhaseIds` muda (correção CR-03). */
+  artifactPhaseId: Record<string, string>;
   loadPhaseTree: (phaseId: string) => Promise<void>;
   loadArtifact: (path: string) => Promise<void>;
+}
+
+/**
+ * Deriva o phaseId dono de um artefato a partir do seu caminho
+ * (`.../phases/<numero>-<slug>/<arquivo>`) — pega o penúltimo segmento do
+ * caminho e roda `parsePhaseDirName` (mesmo parser usado em `phase-scan.ts`),
+ * usando `.padded` como phaseId. Devolve `null` quando o caminho não segue
+ * esse formato (ex.: um caminho de teste sem o segmento de diretório de fase).
+ */
+function derivePhaseIdFromArtifactPath(path: string): string | null {
+  const segments = path.split("/").filter((segment) => segment.length > 0);
+  const dirSegment = segments[segments.length - 2];
+  if (!dirSegment) return null;
+  const parsed = parsePhaseDirName(dirSegment);
+  return parsed ? parsed.padded : null;
 }
 
 /**
@@ -46,6 +63,7 @@ export const useDetailStore = create<DetailStoreState>()(
     treeByPhaseId: {},
     loading: {},
     artifactContent: {},
+    artifactPhaseId: {},
 
     loadPhaseTree: async (phaseId: string) => {
       if (get().treeByPhaseId[phaseId] || get().loading[phaseId]) return;
@@ -93,16 +111,20 @@ export const useDetailStore = create<DetailStoreState>()(
     loadArtifact: async (path: string) => {
       if (get().artifactContent[path]) return;
 
+      const phaseId = derivePhaseIdFromArtifactPath(path);
+
       try {
         const raw = await readPlanningText(path);
         set((state) => {
           state.artifactContent[path] = ok(raw);
+          if (phaseId) state.artifactPhaseId[path] = phaseId;
         });
       } catch (error) {
         set((state) => {
           state.artifactContent[path] = unrecognized([
             { path, reason: `Falha ao ler artefato: ${String(error)}` },
           ]);
+          if (phaseId) state.artifactPhaseId[path] = phaseId;
         });
       }
     },
@@ -113,6 +135,14 @@ export const useDetailStore = create<DetailStoreState>()(
 // do board-store (D-13) — o painel de detalhe já aberto recarrega a árvore
 // em tempo real junto com o glow do card, em vez de continuar mostrando um
 // snapshot obsoleto até o usuário fechar e reabrir o painel.
+//
+// Correção CR-03: a MESMA subscription também descarta as entradas de
+// `artifactContent` (e do mapa companheiro `artifactPhaseId`) cuja fase dona
+// está em `affected` — sem isso, o cache de conteúdo bruto de artefato nunca
+// invalidava (só `treeByPhaseId` tinha esse hook), e o modal podia mostrar
+// uma versão obsoleta de um PLAN/SUMMARY/VERIFICATION indefinidamente depois
+// que o arquivo mudasse no disco. Uma fase NÃO presente em `affected`
+// permanece cacheada — a invalidação é escopada por fase, nunca global.
 let previousUpdatedIds: string[] = [];
 useBoardStore.subscribe((state) => {
   const affected = state.recentlyUpdatedPhaseIds;
@@ -126,5 +156,19 @@ useBoardStore.subscribe((state) => {
       delete detailState.treeByPhaseId[phaseId];
     });
     void useDetailStore.getState().loadPhaseTree(phaseId);
+  }
+
+  const affectedSet = new Set(affected);
+  const artifactOwners = useDetailStore.getState().artifactPhaseId;
+  const pathsToInvalidate = Object.entries(artifactOwners)
+    .filter(([, ownerPhaseId]) => affectedSet.has(ownerPhaseId))
+    .map(([path]) => path);
+  if (pathsToInvalidate.length > 0) {
+    useDetailStore.setState((detailState) => {
+      for (const path of pathsToInvalidate) {
+        delete detailState.artifactContent[path];
+        delete detailState.artifactPhaseId[path];
+      }
+    });
   }
 });
