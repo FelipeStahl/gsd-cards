@@ -14,6 +14,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        // Só usado para abrir URLs clicáveis do output do terminal no
+        // navegador padrão do SO (`@xterm/addon-web-links`, TERM-02) — a
+        // capability concedida em capabilities/default.json é
+        // `opener:allow-open-url` apenas, nunca `allow-open-path`/
+        // `allow-reveal-item-in-dir` (T-02-08).
+        .plugin(tauri_plugin_opener::init())
         .manage(planning_watcher::WatcherState::default())
         .manage(pty::PtyManager::default())
         .invoke_handler(tauri::generate_handler![

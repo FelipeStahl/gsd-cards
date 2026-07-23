@@ -7,16 +7,31 @@
 // efetivamente mate a sessão anterior, o segundo `spawnSession` colidiria
 // com o `sessionId` ainda vivo no `PtyManager` (`AlreadyExists`).
 //
-// Este é o componente mínimo do tracer (Plano 02-01) — sem WebGL, busca ou
-// links clicáveis ainda (Plano 05/06), sem algoritmo de foco/background
-// (Plano 06). Um único caminho feliz: spawn → bytes no xterm → dispose+kill.
+// Plano 05 estende o tracer (Plano 01) com scrollback/copy-on-select já
+// confirmados + links clicáveis (`WebLinksAddon`, TERM-02). Busca
+// (`SearchAddon`, TERM-03) e o algoritmo de foco/WebGL (Plano 06) vêm a
+// seguir, sobre esta mesma instância.
 
 import { useEffect, useRef } from "react";
 import { Terminal, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import "@xterm/xterm/css/xterm.css";
 
 import { killSession, resizeSession, spawnSession, writeSession } from "../../pty/channel";
+
+// Mesmo padrão de `ArtifactModal.tsx` (T-01-02): só esquema http(s) é
+// aberto — nunca `file:`/`javascript:`/outro esquema arbitrário do output
+// não confiável do `claude` (T-02-08). O opener do Tauri em si só tem a
+// capability `opener:allow-open-url` concedida (nunca `allow-open-path`),
+// mas a validação de esquema aqui é uma segunda barreira antes mesmo de
+// chamar o comando do backend.
+const SAFE_URL_PATTERN = /^https?:\/\//i;
+
+function isSafeUrl(uri: string): boolean {
+  return SAFE_URL_PATTERN.test(uri);
+}
 
 // Valores EXATOS de `02-UI-SPEC.md` ## Terminal Chrome & xterm Theme —
 // xterm.js exige hex/rgba literais, não lê custom properties de CSS.
@@ -96,6 +111,20 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
 
     const fitAddon = new FitAddon();
     terminal.loadAddon(fitAddon);
+
+    // TERM-02: URLs no output ficam clicáveis; o handler só abre esquemas
+    // http(s) validados (`isSafeUrl`) via o comando `opener` do Tauri —
+    // nunca renderiza markup, é uma interação do addon sobre o buffer que
+    // já foi escrito por `terminal.write()` (T-02-05).
+    const webLinksAddon = new WebLinksAddon((_event, uri) => {
+      if (!isSafeUrl(uri)) return;
+      void openUrl(uri).catch(() => {
+        // Abrir no navegador do SO falhou — o texto do link continua
+        // selecionável/copiável no terminal, só a ação de clique degrada.
+      });
+    });
+    terminal.loadAddon(webLinksAddon);
+
     terminal.open(container);
     fitAddon.fit();
 
