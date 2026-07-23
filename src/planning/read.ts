@@ -23,6 +23,8 @@ export interface ValidatedProject {
   planningDir: string;
   hasRoadmap: boolean;
   hasState: boolean;
+  /** Aditivo (Fase 2, PROJ-04) — ver `has_gsd_core` em `project.rs`. */
+  hasGsdCore: boolean;
 }
 
 export type ProjectOpenErrorKind = "NotAGsdProject" | "OutsideScope" | "IoError";

@@ -13,6 +13,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
+use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
 #[derive(Debug, Clone, Serialize)]
@@ -22,6 +23,12 @@ pub struct ValidatedProject {
     pub planning_dir: String,
     pub has_roadmap: bool,
     pub has_state: bool,
+    /// Aditivo (Fase 2, PROJ-04): `true` quando gsd-core está instalado
+    /// local-por-projeto (`<root>/.claude/gsd-core/`), no home do usuário
+    /// (`~/.claude/gsd-core/`), OU resolve globalmente via `which gsd-tools`
+    /// — qualquer uma das três é suficiente (02-RESEARCH.md Pattern 5,
+    /// escopo mínimo v1 Claude-only da Open Question #2).
+    pub has_gsd_core: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -58,6 +65,30 @@ fn canonicalize(path: &Path) -> std::io::Result<PathBuf> {
     dunce::canonicalize(path)
 }
 
+/// `true` quando `<dir>/.claude/gsd-core/` existe — checagem pura, testável
+/// sem depender de um `AppHandle` real (usada tanto para a raiz do projeto
+/// quanto para o home do usuário em `has_gsd_core_installed`).
+fn dir_has_gsd_core(dir: &Path) -> bool {
+    dir.join(".claude").join("gsd-core").exists()
+}
+
+/// Três formas observadas de gsd-core estar instalado (nenhuma delas
+/// exclusiva): (a) local-por-projeto, (b) no home do usuário, (c) global via
+/// PATH (`gsd-tools`). Não existe um comando "doctor"/health-check oficial do
+/// gsd-core para isso (02-RESEARCH.md Pattern 5) — é inferência por
+/// existência de diretório/binário, não uma API formal.
+fn has_gsd_core_installed(app: &tauri::AppHandle, root_canonical: &Path) -> bool {
+    if dir_has_gsd_core(root_canonical) {
+        return true;
+    }
+    if let Ok(home) = app.path().home_dir() {
+        if dir_has_gsd_core(&home) {
+            return true;
+        }
+    }
+    which::which("gsd-tools").is_ok()
+}
+
 #[tauri::command]
 pub fn validate_project_root(
     app: tauri::AppHandle,
@@ -87,6 +118,7 @@ pub fn validate_project_root(
 
     let has_roadmap = planning_canonical.join("ROADMAP.md").exists();
     let has_state = planning_canonical.join("STATE.md").exists();
+    let has_gsd_core = has_gsd_core_installed(&app, &root_canonical);
 
     // Concede escopo de leitura em runtime apenas para esta raiz canônica —
     // nenhum outro diretório recebe escopo (mitiga T-01-03b).
@@ -101,6 +133,7 @@ pub fn validate_project_root(
         planning_dir: planning_canonical.to_string_lossy().replace('\\', "/"),
         has_roadmap,
         has_state,
+        has_gsd_core,
     })
 }
 
@@ -128,6 +161,28 @@ mod tests {
     #[test]
     fn root_is_contained_in_itself() {
         assert!(is_contained(Path::new("/a/b"), Path::new("/a/b")));
+    }
+
+    #[test]
+    fn dir_has_gsd_core_true_when_subpath_exists() {
+        let dir = std::env::temp_dir().join(format!(
+            "gsd-cards-test-has-gsd-core-{}-{}",
+            std::process::id(),
+            line!()
+        ));
+        std::fs::create_dir_all(dir.join(".claude").join("gsd-core")).unwrap();
+        assert!(dir_has_gsd_core(&dir));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn dir_has_gsd_core_false_when_missing() {
+        let dir = std::env::temp_dir().join(format!(
+            "gsd-cards-test-no-gsd-core-{}-{}",
+            std::process::id(),
+            line!()
+        ));
+        assert!(!dir_has_gsd_core(&dir));
     }
 
     // Caminhos estilo Windows (drive + separador `\`) só têm semântica de

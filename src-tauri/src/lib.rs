@@ -1,3 +1,4 @@
+mod dependencies;
 mod planning_watcher;
 // `pub` (não `mod` privado) porque `tests/tree_kill.rs` — um crate externo
 // que depende de `gsd_cards_lib` como biblioteca — precisa exercitar
@@ -22,6 +23,7 @@ pub fn run() {
             pty::write_session,
             pty::resize_session,
             pty::kill_session,
+            dependencies::check_claude_on_path,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
