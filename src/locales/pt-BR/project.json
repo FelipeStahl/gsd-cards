@@ -1,0 +1,34 @@
+{
+  "actions": {
+    "open": "Abrir projeto"
+  },
+  "empty": {
+    "heading": "Nenhum projeto aberto",
+    "body": "Abra uma pasta com um diretório .planning/ existente para começar a espelhar o progresso do seu projeto GSD."
+  },
+  "error": {
+    "notGsd": {
+      "heading": "Esta pasta não é um projeto GSD",
+      "body": "Não encontramos um diretório .planning/ aqui. Escolha a pasta raiz de um projeto GSD existente."
+    },
+    "generic": {
+      "heading": "Não foi possível abrir este projeto",
+      "body": "{{message}}"
+    }
+  },
+  "board": {
+    "comingSoon": "Board (chega no Plano 03)"
+  },
+  "header": {
+    "milestone": "Milestone",
+    "phaseOfTotal": "Fase {{current}} de {{total}}",
+    "progress": "Progresso geral",
+    "unrecognized": "Não foi possível interpretar este valor"
+  },
+  "sidebar": {
+    "comingSoon": "Sessões (em breve)"
+  },
+  "drawer": {
+    "terminalComingSoon": "Terminal na Fase 2"
+  }
+}

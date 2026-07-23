@@ -1,0 +1,34 @@
+{
+  "actions": {
+    "open": "Open project"
+  },
+  "empty": {
+    "heading": "No project open",
+    "body": "Open a folder with an existing .planning/ directory to start mirroring your GSD project's progress."
+  },
+  "error": {
+    "notGsd": {
+      "heading": "This folder is not a GSD project",
+      "body": "We couldn't find a .planning/ directory here. Choose the root folder of an existing GSD project."
+    },
+    "generic": {
+      "heading": "This project could not be opened",
+      "body": "{{message}}"
+    }
+  },
+  "board": {
+    "comingSoon": "Board (arriving in Plan 03)"
+  },
+  "header": {
+    "milestone": "Milestone",
+    "phaseOfTotal": "Phase {{current}} of {{total}}",
+    "progress": "Overall progress",
+    "unrecognized": "This value could not be parsed"
+  },
+  "sidebar": {
+    "comingSoon": "Sessions (coming soon)"
+  },
+  "drawer": {
+    "terminalComingSoon": "Terminal in Phase 2"
+  }
+}

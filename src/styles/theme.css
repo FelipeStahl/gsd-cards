@@ -42,6 +42,11 @@
   --color-warning: #f59e0b;
   --color-success: #10b981;
   --color-destructive: #ef4444;
+  /* Não declarado no UI-SPEC original (só cores de superfície/status foram
+     especificadas); adicionado no Plano 02 porque nenhum componente teria
+     texto legível no tema escuro sem um par de cores de texto que acompanhe
+     a troca de --color-dominant/--color-secondary via prefers-color-scheme. */
+  --color-foreground: #18181b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -52,5 +57,6 @@
     --color-warning: #fbbf24;
     --color-success: #34d399;
     --color-destructive: #f87171;
+    --color-foreground: #f4f4f5;
   }
 }
