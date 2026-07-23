@@ -11,7 +11,11 @@
     "toggle": "Milestone history"
   },
   "detail": {
-    "viewArtifact": "View artifact"
+    "viewArtifact": "View artifact",
+    "breadcrumb": "Phase {{number}}: {{name}}",
+    "close": "Close detail panel",
+    "loading": "Loading phase tree…",
+    "plan": "Plan {{id}}"
   },
   "card": {
     "parseError": {

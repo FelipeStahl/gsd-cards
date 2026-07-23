@@ -11,7 +11,11 @@
     "toggle": "Histórico de milestones"
   },
   "detail": {
-    "viewArtifact": "Ver artefato"
+    "viewArtifact": "Ver artefato",
+    "breadcrumb": "Fase {{number}}: {{name}}",
+    "close": "Fechar painel de detalhe",
+    "loading": "Carregando árvore da fase…",
+    "plan": "Plano {{id}}"
   },
   "card": {
     "parseError": {

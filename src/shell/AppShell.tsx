@@ -6,6 +6,7 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 
+import { DetailPanel } from "../components/DetailPanel";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { useBoardStore } from "../stores/board-store";
@@ -93,6 +94,7 @@ export function AppShell() {
         </main>
         <DrawerRail />
       </div>
+      <DetailPanel />
     </div>
   );
 }
