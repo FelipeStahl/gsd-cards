@@ -10,7 +10,9 @@ import {
   readDir,
   exists,
   size as fileSize,
+  stat as fileStat,
   type DirEntry,
+  type FileInfo,
 } from "@tauri-apps/plugin-fs";
 
 /** Teto de tamanho por arquivo lido — mitiga T-01-05 (DoS via arquivo gigante travando o webview). */
@@ -114,4 +116,14 @@ export async function listPlanningDir(path: string): Promise<DirEntry[]> {
 
 export async function planningFileExists(path: string): Promise<boolean> {
   return exists(path);
+}
+
+/**
+ * Metadados de arquivo (mtime, entre outros) — necessário para o sinal
+ * `isActive` da varredura de fase (Plano 03, `phase-scan.ts`): a heurística
+ * "fase ativa" do gsd-core observa o mtime dos arquivos do diretório da fase.
+ * Read-only (`fs:allow-stat`), sem novo escopo de escrita.
+ */
+export async function statPlanningPath(path: string): Promise<FileInfo> {
+  return fileStat(path);
 }
