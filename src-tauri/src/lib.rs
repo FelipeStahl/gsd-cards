@@ -1,4 +1,5 @@
 mod planning_watcher;
+mod process_guard;
 mod project;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
