@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: sess-o-viva
 status: executing
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-07-23T17:39:26.885Z"
+stopped_at: Completed 02-05-PLAN.md
+last_updated: "2026-07-23T17:56:16.602Z"
 last_activity: 2026-07-23
 last_activity_desc: Phase 02 execution resumed (wave continue)
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 02 (sess-o-viva) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-07-23 — Phase 02 execution resumed (wave continue)
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [█████████░] 86%
 | Phase 02 P02 | 7min | 2 tasks | 4 files |
 | Phase 02 P03 | 9min | 2 tasks | 11 files |
 | Phase 02 P04 | 16min | 2 tasks | 20 files |
+| Phase 02 P05 | 20min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,9 @@ Recent decisions affecting current work:
 - [Phase ?]: SessionSidebar built in two layers across Task1/Task2 so Task1's isolated verify never imports a not-yet-created ToolMissingState module
 - [Phase ?]: hasGsdCore added as OPTIONAL on ProjectStateModel to avoid breaking pre-existing project:{...} test literals across the codebase
 - [Phase ?]: gsd-core-missing gate only applies when a project is open (defaults to present); claude-missing gates globally on first sidebar mount
+- [Phase ?]: [Phase 02-05]: tauri-plugin-opener pinado como "2" (não exato) para seguir a convenção dos plugins irmãos já no Cargo.toml
+- [Phase ?]: [Phase 02-05]: TerminalSearchBar recebe o addon via SearchAddonHandle (contrato estrutural mínimo), não a classe SearchAddon real — addon-search real exige canvas/matchMedia indisponíveis em jsdom sem o pacote canvas
+- [Phase ?]: [Phase 02-05]: ISearchOptions.decorations é passado por chamada de busca (findNext/findPrevious), não no construtor do addon — sem isso onDidChangeResults não dispara o contador current/total
 
 ### Pending Todos
 
@@ -117,6 +121,7 @@ None yet.
 - [Phase 1]: Tauri vs. Electron ainda não decidido — bloqueia a consolidação da stack; primeira entrega da Fase 1 é o spike/decisão.
 - [Phase 1/4]: Fragilidade do parser vs. evolução do formato gsd-core — mitigar com fixtures versionadas (definir na Fase 1, validar na Fase 4).
 - [Phase 2]: Zombie processes do PTY / ConPTY no Windows — tree-kill e handlers de saída como critério de fundação, testar em máquina Windows real.
+- [Phase 02-05]: Nenhum plano da Fase 2 (01-06) construiu o TerminalPane/chrome header (02-UI-SPEC.md) — o ícone Buscar 32x32 não existe; TerminalSearchBar abre só via Ctrl+F/Cmd+F. Registrado em WINDOWS.md.
 
 ## Deferred Items
 
@@ -128,6 +133,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-23T17:39:26.871Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-07-23T17:56:16.588Z
+Stopped at: Completed 02-05-PLAN.md
 Resume file: None

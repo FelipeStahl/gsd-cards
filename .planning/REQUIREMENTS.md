@@ -28,8 +28,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Terminal (TERM)
 
 - [ ] **TERM-01**: Usuário interage com terminal real embutido no drawer direito rodando o `claude` interativo
-- [ ] **TERM-02**: Terminal tem scrollback com limite, copiar/colar e links clicáveis
-- [ ] **TERM-03**: Usuário busca texto no scrollback do terminal
+- [x] **TERM-02**: Terminal tem scrollback com limite, copiar/colar e links clicáveis
+- [x] **TERM-03**: Usuário busca texto no scrollback do terminal
 - [ ] **TERM-04**: Usuário é notificado quando uma sessão termina ou precisa de input (alerta do SO + badge na sidebar)
 
 ### Board (BOARD)
@@ -105,8 +105,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SESS-05 | Phase 4 | Pending |
 | SESS-06 | Phase 2 | Complete |
 | TERM-01 | Phase 2 | Pending |
-| TERM-02 | Phase 2 | Pending |
-| TERM-03 | Phase 2 | Pending |
+| TERM-02 | Phase 2 | Complete |
+| TERM-03 | Phase 2 | Complete |
 | TERM-04 | Phase 4 | Pending |
 | BOARD-01 | Phase 1 | Complete |
 | BOARD-02 | Phase 1 | Complete |

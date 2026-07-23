@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 1
+open_count: 2
 waived_count: 0
 fixed_count: 0
-total_count: 1
-last_updated: 2026-07-23T17:38:59.572Z
+total_count: 2
+last_updated: 2026-07-23T17:54:39.675Z
 ---
 
 # Broken Windows Ledger
@@ -16,6 +16,7 @@ last_updated: 2026-07-23T17:38:59.572Z
 | id | phase | kind | file | line | description | status | reason | recorded_at | resolved_at |
 |----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
 | 1 | 02 | deviation | src/locales/pt-BR/session.json |  | toolMissing.*.body copy kept generic ('consulte a documentação oficial') per UI-SPEC's own flagged unresolved item — not independently re-verified against current official install docs | open |  | 2026-07-23T17:38:59.572Z |  |
+| 2 | 02 | deviation | src/components/terminal/TerminalView.tsx |  | TerminalSearchBar só abre via Ctrl+F/Cmd+F nesta fase — o ícone de busca do chrome header (TerminalPane) não existe em nenhum plano executado (01-06); adicionar o toggle por ícone quando TerminalPane for construído | open |  | 2026-07-23T17:54:39.675Z |  |
 
 ````json
 [
@@ -29,6 +30,18 @@ last_updated: 2026-07-23T17:38:59.572Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-07-23T17:38:59.572Z",
+    "resolved_at": null
+  },
+  {
+    "id": 2,
+    "kind": "deviation",
+    "phase": "02",
+    "file": "src/components/terminal/TerminalView.tsx",
+    "line": null,
+    "description": "TerminalSearchBar só abre via Ctrl+F/Cmd+F nesta fase — o ícone de busca do chrome header (TerminalPane) não existe em nenhum plano executado (01-06); adicionar o toggle por ícone quando TerminalPane for construído",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-07-23T17:54:39.675Z",
     "resolved_at": null
   }
 ]
