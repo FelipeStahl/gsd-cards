@@ -1,8 +1,20 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SessionRow } from "./SessionRow";
 import type { SessionDescriptor } from "../../stores/session-store";
+
+const archiveSessionMock = vi.fn();
+
+vi.mock("../../stores/session-store", () => ({
+  useSessionStore: (selector: (state: { archiveSession: typeof archiveSessionMock }) => unknown) =>
+    selector({ archiveSession: archiveSessionMock }),
+}));
+
+const { SessionRow } = await import("./SessionRow");
+
+beforeEach(() => {
+  archiveSessionMock.mockReset();
+});
 
 function makeSession(overrides: Partial<SessionDescriptor> = {}): SessionDescriptor {
   return {
@@ -16,20 +28,76 @@ function makeSession(overrides: Partial<SessionDescriptor> = {}): SessionDescrip
 describe("SessionRow — variante live", () => {
   it("renderiza o label truncável com id.slice(0,8) e o title com o id completo", () => {
     const session = makeSession();
-    render(<SessionRow session={session} variant="live" />);
+    const { container } = render(<SessionRow session={session} variant="live" />);
 
     expect(screen.getByText(`Sessão ${session.id.slice(0, 8)}`)).toBeInTheDocument();
-    expect(screen.getByRole("button")).toHaveAttribute("title", session.id);
+    expect(container.querySelector(".session-row")).toHaveAttribute("title", session.id);
   });
 
   it("clique numa row live chama onSelect com o id da sessão", () => {
     const session = makeSession();
     const onSelect = vi.fn();
-    render(<SessionRow session={session} variant="live" onSelect={onSelect} />);
+    const { container } = render(<SessionRow session={session} variant="live" onSelect={onSelect} />);
 
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(container.querySelector(".session-row") as HTMLElement);
 
     expect(onSelect).toHaveBeenCalledWith(session.id);
+  });
+
+  it("mostra os botões Archive e Delete só no hover (visíveis no DOM, opacidade controlada por CSS)", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    expect(screen.getByRole("button", { name: "Arquivar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
+  });
+
+  it("clicar Archive chama archiveSession sem abrir diálogo de confirmação", async () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Arquivar" }));
+
+    expect(archiveSessionMock).toHaveBeenCalledWith(session.id);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("clicar Delete abre o ConfirmDialog e só chama archiveSession após confirmar", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+    expect(archiveSessionMock).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog).toBeInTheDocument();
+
+    // O botão de confirmação do diálogo tem o MESMO rótulo ("Excluir") do
+    // botão de ação da row — `within(dialog)` escopa a busca só ao modal.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
+
+    expect(archiveSessionMock).toHaveBeenCalledWith(session.id);
+  });
+
+  it("Cancelar no ConfirmDialog fecha o diálogo sem chamar archiveSession", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+    const dialog = screen.getByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancelar" }));
+
+    expect(archiveSessionMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("clicar Archive/Delete nunca chama onSelect (stopPropagation)", () => {
+    const session = makeSession();
+    const onSelect = vi.fn();
+    render(<SessionRow session={session} variant="live" onSelect={onSelect} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Arquivar" }));
+
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });
 

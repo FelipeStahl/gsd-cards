@@ -94,6 +94,27 @@
   box-sizing: border-box;
 }
 
+/* Plano 06 (Fase 2) — botões de Arquivar/Excluir da SessionRow (SESS-06):
+   só aparecem no hover da row (ou quando um dos dois tem foco de teclado,
+   `:focus-within`, para não ficarem inacessíveis via Tab). Inline styles
+   não expressam `:hover`/`:focus-within` — mesmo padrão de `.phase-card`
+   acima, uma classe CSS dedicada. Excluir (`Trash2`) fica destrutivo só no
+   PRÓPRIO hover/foco do botão, nunca junto com o hover da row inteira
+   (`02-UI-SPEC.md` ## Color: "Delete-session icon button's hover/focus
+   state"). */
+.session-row__actions {
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+.session-row:hover .session-row__actions,
+.session-row__actions:focus-within {
+  opacity: 1;
+}
+.session-row__action--delete:hover,
+.session-row__action--delete:focus-visible {
+  color: var(--color-destructive);
+}
+
 /* Plano 03 — card de fase (D-09): hover com borda de acento (sem sombra) e
    highlight de atualização em tempo real ~1000ms (D-13), consumido a partir
    do Plano 04 via a prop `highlighted`. */

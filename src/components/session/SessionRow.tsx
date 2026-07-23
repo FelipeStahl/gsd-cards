@@ -1,18 +1,28 @@
-// Linha de sessão da SessionSidebar (SESS-01), 40px de altura. Este plano
-// (04) só produz as variantes `live`/`historical` (as únicas que
-// `session-store` sabe distinguir hoje); `starting`/`exited` já existem no
-// tipo `SessionRowVariant` e no mapeamento de tom para não exigir rework
-// quando o Plano 06 consumir o ciclo de vida real do PTY (evento de
-// spawn/exit do backend).
+// Linha de sessão da SessionSidebar (SESS-01), 40px de altura. Plano 04 só
+// produzia as variantes `live`/`historical`; `starting`/`exited` já
+// existiam no tipo `SessionRowVariant` e no mapeamento de tom para não
+// exigir rework quando o Plano 06 consumisse o ciclo de vida real do PTY.
+//
+// Este plano (06) adiciona as affordances de ciclo de vida (SESS-06):
+// botões Archive/Trash2 32×32 visíveis só no hover da row (`.session-row`/
+// `.session-row__actions` em `theme.css`). Arquivar mata a árvore de
+// processos e remove a row sem confirmação; Excluir abre o `ConfirmDialog`
+// primeiro. As duas chamam `archiveSession` do `session-store` — mesma
+// ação, só a confirmação de UI muda (`02-UI-SPEC.md` ## Session Lifecycle
+// Affordances). Nenhuma das duas toca o `.jsonl` de histórico do Claude
+// Code (Pitfall 5 de `02-RESEARCH.md`) — a cópia do `ConfirmDialog` deixa
+// isso explícito ao usuário.
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { Archive, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, ptBR } from "date-fns/locale";
 import type { Locale } from "date-fns";
 import { useTranslation } from "react-i18next";
 
 import { statusDotVariants, type StatusTone } from "../StatusBadge";
-import type { SessionDescriptor } from "../../stores/session-store";
+import { useSessionStore, type SessionDescriptor } from "../../stores/session-store";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 const DATE_FNS_LOCALE: Record<string, Locale> = {
   "pt-BR": ptBR,
@@ -44,7 +54,9 @@ interface SessionRowProps {
 export function SessionRow({ session, variant, active = false, onSelect }: SessionRowProps) {
   const { t, i18n } = useTranslation("session");
   const [showHistoricalHint, setShowHistoricalHint] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const hintTimeoutRef = useRef<number | undefined>(undefined);
+  const archiveSession = useSessionStore((state) => state.archiveSession);
 
   useEffect(() => {
     return () => {
@@ -55,6 +67,31 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
   }, []);
 
   const isHistorical = variant === "historical";
+  // Arquivar/Excluir só fazem sentido para sessões desta execução (SESS-06
+  // fala de matar árvore de processos — uma row histórica não tem
+  // `PtySession` viva a matar; escondê-la aqui só a faria reaparecer no
+  // próximo `discoverSessions`, já que o `.jsonl` continua intacto).
+  const showLifecycleActions = !isHistorical;
+
+  function handleArchiveClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    // Sem confirmação (02-UI-SPEC.md ## Session Lifecycle Affordances).
+    void archiveSession(session.id);
+  }
+
+  function handleDeleteClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    setShowConfirmDelete(true);
+  }
+
+  function handleConfirmDelete() {
+    setShowConfirmDelete(false);
+    void archiveSession(session.id);
+  }
+
+  function handleCancelDelete() {
+    setShowConfirmDelete(false);
+  }
   const label = `${t("row.labelPrefix")} ${session.id.slice(0, 8)}`;
   const displayLabel = variant === "exited" ? `${label} ${t("row.exited")}` : label;
   const locale = DATE_FNS_LOCALE[i18n.language] ?? ptBR;
@@ -97,6 +134,7 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
         onClick={handleActivate}
         onKeyDown={handleKeyDown}
         title={session.id}
+        className="session-row"
         style={{
           height: 40,
           display: "flex",
@@ -147,7 +185,63 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
         >
           {relativeTime}
         </span>
+        {showLifecycleActions ? (
+          <span className="session-row__actions" style={{ display: "flex", flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={handleArchiveClick}
+              aria-label={t("actions.archive")}
+              title={t("actions.archive")}
+              style={{
+                width: 32,
+                height: 32,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--color-foreground)",
+                flexShrink: 0,
+              }}
+            >
+              <Archive size={16} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteClick}
+              aria-label={t("actions.delete")}
+              title={t("actions.delete")}
+              className="session-row__action--delete"
+              style={{
+                width: 32,
+                height: 32,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--color-foreground)",
+                flexShrink: 0,
+              }}
+            >
+              <Trash2 size={16} aria-hidden="true" />
+            </button>
+          </span>
+        ) : null}
       </div>
+      {showConfirmDelete ? (
+        <ConfirmDialog
+          heading={t("confirmDelete.heading")}
+          body={t("confirmDelete.body")}
+          confirmLabel={t("confirmDelete.confirm")}
+          cancelLabel={t("confirmDelete.cancel")}
+          tone="destructive"
+          onConfirm={handleConfirmDelete}
+          onCancel={handleCancelDelete}
+        />
+      ) : null}
       {isHistorical && showHistoricalHint ? (
         <div
           role="status"

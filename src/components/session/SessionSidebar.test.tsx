@@ -89,7 +89,9 @@ describe("SessionSidebar — zero-one-many", () => {
     expect(screen.getByText("Ativas")).toBeInTheDocument();
     expect(screen.getByText("Histórico")).toBeInTheDocument();
 
-    const rowIds = Array.from(container.querySelectorAll("[title]")).map((el) =>
+    // `.session-row` escopa a busca à própria row — os botões de
+    // Arquivar/Excluir (Plano 06) também têm `title`, mas não são rows.
+    const rowIds = Array.from(container.querySelectorAll(".session-row")).map((el) =>
       el.getAttribute("title"),
     );
     expect(rowIds).toEqual(["live-session", "zzzzzzzz-new", "aaaaaaaa-old"]);

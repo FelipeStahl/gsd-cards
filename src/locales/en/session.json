@@ -1,7 +1,9 @@
 {
   "actions": {
     "newSession": "New session",
-    "reexpand": "Reopen session"
+    "reexpand": "Reopen session",
+    "archive": "Archive",
+    "delete": "Delete"
   },
   "sidebar": {
     "heading": "Sessions",
@@ -19,6 +21,12 @@
     "starting": "Starting…",
     "exited": "(exited)",
     "historicalTooltip": "Session from previous runs — resume arrives in Phase 4"
+  },
+  "confirmDelete": {
+    "heading": "Delete session?",
+    "body": "This ends the Claude process for this session. The conversation history stays saved by Claude Code.",
+    "confirm": "Delete",
+    "cancel": "Cancel"
   },
   "toolMissing": {
     "claude": {

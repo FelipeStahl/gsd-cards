@@ -1,7 +1,9 @@
 {
   "actions": {
     "newSession": "Nova sessão",
-    "reexpand": "Reabrir sessão"
+    "reexpand": "Reabrir sessão",
+    "archive": "Arquivar",
+    "delete": "Excluir"
   },
   "sidebar": {
     "heading": "Sessões",
@@ -19,6 +21,12 @@
     "starting": "Iniciando…",
     "exited": "(encerrada)",
     "historicalTooltip": "Sessão de execuções anteriores — retomar chega na Fase 4"
+  },
+  "confirmDelete": {
+    "heading": "Excluir sessão?",
+    "body": "Isso encerra o processo do Claude nesta sessão. O histórico da conversa permanece salvo pelo Claude Code.",
+    "confirm": "Excluir",
+    "cancel": "Cancelar"
   },
   "toolMissing": {
     "claude": {
