@@ -77,7 +77,26 @@ Plans:
   4. Usuário busca texto no scrollback do terminal e encontra ocorrências anteriores.
   5. Usuário arquiva/exclui uma sessão e a árvore de processos é encerrada de forma limpa — nenhum processo zumbi permanece, inclusive ao fechar o app no Windows (tree-kill validado como critério de fundação).
 
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Fatia-traçadora: sessão viva end-to-end (spawn PTY do claude → bytes no xterm → kill limpo de árvore) + spike win32job A1
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 02-02-PLAN.md — SESS-06 fundação: teste de integração de tree-kill (spawn→neto→kill→zero PIDs)
+- [ ] 02-03-PLAN.md — Backend de sessões: detecção de Claude CLI/gsd-core (PROJ-04) + escopo estreito de descoberta (SESS-01)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 02-04-PLAN.md — Sidebar de sessões (SESS-01) + tela tool-missing (PROJ-04)
+- [ ] 02-05-PLAN.md — Terminal: scrollback/copiar-colar/links clicáveis (TERM-02) + busca no scrollback (TERM-03)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 02-06-PLAN.md — Foco multi-sessão em background (SESS-03) + affordances arquivar/excluir (SESS-06 UI)
+
 **UI hint**: yes
 
 ### Phase 3: Board interativo
@@ -136,7 +155,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Espelho fiel | 8/8 | In Progress|  |
-| 2. Sessão viva | 0/TBD | Not started | - |
+| 2. Sessão viva | 0/6 | Not started | - |
 | 3. Board interativo | 0/TBD | Not started | - |
 | 4. Casa persistente | 0/TBD | Not started | - |
 | 5. Comunidade | 0/TBD | Not started | - |
