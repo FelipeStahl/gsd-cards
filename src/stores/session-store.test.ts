@@ -122,6 +122,71 @@ describe("killSession", () => {
   });
 });
 
+describe("liveSessions (SESS-03)", () => {
+  it("getOrCreateLiveSession cria um LiveSessionState vazio na primeira chamada", () => {
+    const liveSession = useSessionStore.getState().getOrCreateLiveSession("session-x-1");
+
+    expect(liveSession).toEqual({ serializedSnapshot: null, backgroundBuffer: [], hasWebgl: false });
+    expect(useSessionStore.getState().hasLiveSession("session-x-1")).toBe(true);
+  });
+
+  it("getOrCreateLiveSession retorna a MESMA instância em chamadas subsequentes (nunca recria)", () => {
+    const first = useSessionStore.getState().getOrCreateLiveSession("session-x-2");
+    first.hasWebgl = true;
+
+    const second = useSessionStore.getState().getOrCreateLiveSession("session-x-2");
+
+    expect(second).toBe(first);
+    expect(second.hasWebgl).toBe(true);
+  });
+
+  it("hasLiveSession é false para uma sessão nunca focada", () => {
+    expect(useSessionStore.getState().hasLiveSession("session-x-nunca-focada")).toBe(false);
+  });
+
+  it("clearLiveSession remove a entrada do mapa", () => {
+    useSessionStore.getState().getOrCreateLiveSession("session-x-3");
+    useSessionStore.getState().clearLiveSession("session-x-3");
+
+    expect(useSessionStore.getState().hasLiveSession("session-x-3")).toBe(false);
+  });
+});
+
+describe("archiveSession (SESS-06 — Arquivar/Excluir)", () => {
+  it("mata a árvore de processos, remove a sessão de sessions[] e limpa activeSessionId/lastFocusedSessionId quando é a sessão ativa", async () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+    useSessionStore.getState().getOrCreateLiveSession(id);
+    killSessionProcessMock.mockResolvedValue(undefined);
+
+    await useSessionStore.getState().archiveSession(id);
+
+    expect(killSessionProcessMock).toHaveBeenCalledWith(id);
+    const state = useSessionStore.getState();
+    expect(state.activeSessionId).toBeNull();
+    expect(state.lastFocusedSessionId).toBeNull();
+    expect(state.sessions.find((session) => session.id === id)).toBeUndefined();
+    expect(state.hasLiveSession(id)).toBe(false);
+  });
+
+  it("não mexe em activeSessionId quando a sessão arquivada/excluída não é a ativa", async () => {
+    openProjectAt("/repo");
+    const activeId = useSessionStore.getState().createSession() as string;
+    const otherId = useSessionStore.getState().createSession() as string;
+    killSessionProcessMock.mockResolvedValue(undefined);
+
+    // `createSession` marca a sessão mais recente como ativa/focada —
+    // arquiva a PRIMEIRA (não ativa) e confirma que a ativa é preservada.
+    useSessionStore.getState().focusSession(activeId);
+    await useSessionStore.getState().archiveSession(otherId);
+
+    const state = useSessionStore.getState();
+    expect(state.activeSessionId).toBe(activeId);
+    expect(state.sessions.find((session) => session.id === otherId)).toBeUndefined();
+    expect(state.sessions.find((session) => session.id === activeId)).toBeDefined();
+  });
+});
+
 describe("toSessionError", () => {
   it("normaliza um erro tagged { kind, message } vindo do Rust", () => {
     expect(toSessionError({ kind: "NotFound", message: "sessão x" })).toEqual({
