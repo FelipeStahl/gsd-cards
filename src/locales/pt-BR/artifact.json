@@ -1,0 +1,9 @@
+{
+  "modal": {
+    "close": "Fechar",
+    "loading": "Carregando…",
+    "parseError": {
+      "banner": "Falha ao processar — exibindo conteúdo bruto. Motivo: {{reason}}"
+    }
+  }
+}

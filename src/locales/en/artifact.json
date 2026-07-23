@@ -1,0 +1,9 @@
+{
+  "modal": {
+    "close": "Close",
+    "loading": "Loading…",
+    "parseError": {
+      "banner": "Failed to process — showing raw content. Reason: {{reason}}"
+    }
+  }
+}
