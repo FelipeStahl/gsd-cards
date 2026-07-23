@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 
 import { ProgressBar } from "../components/ProgressBar";
 import { statusDotVariants, type StatusTone } from "../components/StatusBadge";
+import { SyncIndicator } from "../components/SyncIndicator";
 import { selectColumnCounts, useBoardStore } from "../stores/board-store";
 import type { BoardColumnId } from "../planning/status";
 
@@ -132,8 +133,7 @@ export function Header() {
         ))}
       </div>
 
-      {/* Slot reservado para o indicador de sincronização — preenchido no Plano 04 */}
-      <div data-slot="sync-indicator" />
+      <SyncIndicator />
     </header>
   );
 }

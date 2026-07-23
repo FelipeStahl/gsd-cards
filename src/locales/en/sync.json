@@ -1,0 +1,12 @@
+{
+  "healthy": {
+    "label": "Synced {{seconds}}s ago"
+  },
+  "stale": {
+    "label": "Stale since {{time}}",
+    "body": "We couldn't observe changes in .planning/. Check whether the folder still exists."
+  },
+  "actions": {
+    "reconnect": "Reconnect"
+  }
+}

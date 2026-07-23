@@ -1,0 +1,12 @@
+{
+  "healthy": {
+    "label": "Sincronizado há {{seconds}}s"
+  },
+  "stale": {
+    "label": "Desatualizado desde {{time}}",
+    "body": "Não conseguimos observar mudanças no .planning/. Verifique se a pasta ainda existe."
+  },
+  "actions": {
+    "reconnect": "Reconectar"
+  }
+}

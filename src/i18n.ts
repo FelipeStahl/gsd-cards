@@ -7,20 +7,24 @@ import projectPtBR from "./locales/pt-BR/project.json";
 import projectEn from "./locales/en/project.json";
 import boardPtBR from "./locales/pt-BR/board.json";
 import boardEn from "./locales/en/board.json";
+import syncPtBR from "./locales/pt-BR/sync.json";
+import syncEn from "./locales/en/sync.json";
 
 // Estrutura deliberada: um arquivo por namespace (`common.json`, `project.json`,
-// `board.json` agora; `sync.json`, `artifact.json` chegam nos planos
-// seguintes) para que planos paralelos não disputem o mesmo arquivo.
+// `board.json`, `sync.json` agora; `artifact.json` chega no Plano 05) para
+// que planos paralelos não disputem o mesmo arquivo.
 export const resources = {
   "pt-BR": {
     common: commonPtBR,
     project: projectPtBR,
     board: boardPtBR,
+    sync: syncPtBR,
   },
   en: {
     common: commonEn,
     project: projectEn,
     board: boardEn,
+    sync: syncEn,
   },
 } as const;
 
@@ -29,7 +33,7 @@ void i18next.use(initReactI18next).init({
   lng: "pt-BR",
   fallbackLng: "pt-BR",
   defaultNS: "common",
-  ns: ["common", "project", "board"],
+  ns: ["common", "project", "board", "sync"],
   interpolation: {
     escapeValue: false,
   },
