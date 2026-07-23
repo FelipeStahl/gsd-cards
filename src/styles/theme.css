@@ -84,6 +84,16 @@
   background-color: var(--color-success);
 }
 
+/* Plano 04 (Fase 2) — dot de sessão histórica: modificador CSS "outline"
+   sobre `status-dot--neutral`, para que `StatusTone` continue um enum
+   fechado de 4 valores (`02-UI-SPEC.md` ## Color). Hollow/outline: 1px de
+   borda na cor do tom neutro, preenchimento transparente. */
+.status-dot--outline {
+  background-color: transparent;
+  border: 1px solid color-mix(in srgb, var(--color-foreground) 40%, transparent);
+  box-sizing: border-box;
+}
+
 /* Plano 03 — card de fase (D-09): hover com borda de acento (sem sombra) e
    highlight de atualização em tempo real ~1000ms (D-13), consumido a partir
    do Plano 04 via a prop `highlighted`. */

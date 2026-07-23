@@ -1,5 +1,22 @@
 {
   "actions": {
     "newSession": "New session"
+  },
+  "sidebar": {
+    "heading": "Sessions",
+    "groups": {
+      "active": "Active",
+      "history": "History"
+    }
+  },
+  "empty": {
+    "heading": "No sessions yet",
+    "body": "Create a session to chat with claude in this project."
+  },
+  "row": {
+    "labelPrefix": "Session",
+    "starting": "Starting…",
+    "exited": "(exited)",
+    "historicalTooltip": "Session from previous runs — resume arrives in Phase 4"
   }
 }

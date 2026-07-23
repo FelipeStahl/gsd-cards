@@ -1,5 +1,22 @@
 {
   "actions": {
     "newSession": "Nova sessão"
+  },
+  "sidebar": {
+    "heading": "Sessões",
+    "groups": {
+      "active": "Ativas",
+      "history": "Histórico"
+    }
+  },
+  "empty": {
+    "heading": "Nenhuma sessão ainda",
+    "body": "Crie uma sessão para conversar com o claude neste projeto."
+  },
+  "row": {
+    "labelPrefix": "Sessão",
+    "starting": "Iniciando…",
+    "exited": "(encerrada)",
+    "historicalTooltip": "Sessão de execuções anteriores — retomar chega na Fase 4"
   }
 }
