@@ -140,3 +140,12 @@ None - no external service configuration required.
 ---
 *Phase: 02-sess-o-viva*
 *Completed: 2026-07-23*
+
+## Self-Check: PASSED
+
+- FOUND: src-tauri/src/bin/tree_kill_helper.rs
+- FOUND: src-tauri/tests/tree_kill.rs
+- FOUND: .planning/phases/02-sess-o-viva/02-02-SUMMARY.md
+- FOUND commit: 6473f07 (Task 1)
+- FOUND commit: 6d18a22 (Task 2)
+- FOUND commit: 2edd406 (SUMMARY)
