@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: espelho-fiel
 status: executing
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-07-23T04:12:19.101Z"
+stopped_at: Completed 01-06-PLAN.md
+last_updated: "2026-07-23T04:35:29.074Z"
 last_activity: 2026-07-23
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 01 (espelho-fiel) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-07-23 — Phase 01 execution started
 
-Progress: [████████░░] 83%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [████████░░] 83%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P05 | 30min | 3 tasks | 24 files |
+| Phase 01 P06 | 35min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,9 @@ Recent decisions affecting current work:
 - [Phase 01-05]: Campos de frontmatter YAML numericos/data (plan: 01, completed: 2026-07-22) normalizados de volta para string nos parsers de PLAN/SUMMARY/VERIFICATION, seguindo o padrao de state.ts
 - [Phase 01-05]: buildPhaseArtifactTree devolve a arvore diretamente (nunca falha na montagem); detail-store.ts envolve o resultado em ParseResult so para cobrir falha ao listar o diretorio da fase
 - [Phase 01-05]: ArtifactModal nunca produz um <a href> navegavel nesta fase, nem para http/https — capability de abrir URL externa fica para fase futura
+- [Phase 01-06]: model.ts's pre-declared milestones slot type changed from placeholder MilestoneRef {id, name} to MilestoneHistoryEntry (ArchivedMilestone + optional name/shippedDate)
+- [Phase 01-06]: extractProgressStatuses in parser/milestones.ts is the one deliberate exception to roadmap.ts's anti-pattern of never reading the Progress table as a status source - safe only for archived phases with no live directory left to inspect
+- [Phase 01-06]: milestone history loads in the background during openProject, guarded by a root check so a project switch racing the promise never corrupts a different project's state
 
 ### Pending Todos
 
@@ -110,6 +114,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-23T04:12:19.089Z
-Stopped at: Completed 01-05-PLAN.md
+Last session: 2026-07-23T04:35:29.062Z
+Stopped at: Completed 01-06-PLAN.md
 Resume file: None
