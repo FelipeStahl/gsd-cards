@@ -36,7 +36,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **BOARD-01**: Usuário vê board kanban com colunas mapeando os status reais de fase do gsd-core
 - [ ] **BOARD-02**: Cards de fase expandem mostrando planos e tarefas (hierarquia de 3 níveis derivada dos artefatos reais)
-- [ ] **BOARD-03**: Board reflete mudanças do `.planning/` em tempo real via file watching, sem refresh manual
+- [x] **BOARD-03**: Board reflete mudanças do `.planning/` em tempo real via file watching, sem refresh manual
 - [x] **BOARD-04**: Usuário vê indicadores de progresso do projeto e das fases (derivados de STATE.md/ROADMAP.md)
 - [ ] **BOARD-05**: Board degrada graciosamente com artefatos não parseáveis (mostra aviso/raw; nunca mente silenciosamente)
 - [ ] **BOARD-06**: Usuário abre visualização renderizada de artefatos (PLAN/SUMMARY/VERIFICATION) a partir do card
@@ -110,7 +110,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TERM-04 | Phase 4 | Pending |
 | BOARD-01 | Phase 1 | Complete |
 | BOARD-02 | Phase 1 | Pending |
-| BOARD-03 | Phase 1 | Pending |
+| BOARD-03 | Phase 1 | Complete |
 | BOARD-04 | Phase 1 | Complete |
 | BOARD-05 | Phase 1 | Pending |
 | BOARD-06 | Phase 1 | Pending |

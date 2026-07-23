@@ -6,14 +6,14 @@ current_phase: 01
 current_phase_name: espelho-fiel
 status: executing
 stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-07-23T03:00:49.057Z"
+last_updated: "2026-07-23T03:25:33.865Z"
 last_activity: 2026-07-23
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 01 (espelho-fiel) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-07-23 — Phase 01 execution started
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P01 | 16min | 4 tasks | 34 files |
 | Phase 01 P02 | 47min | 3 tasks | 27 files |
 | Phase 01 P03 | 55min | 3 tasks | 39 files |
+| Phase 01 P04 | 25min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Recent decisions affecting current work:
 - [Phase 01-03]: researched e discussed colapsam no badge discutida (Open Question #1 do RESEARCH.md resolvida)
 - [Phase 01-03]: toBoardColumn mantem a ultima coluna conhecida quando o badge e unknown, em vez de default para todo
 - [Phase 01-03]: fase presente so no ROADMAP ou so no disco continua renderizada no board (merge degrada graciosamente nos dois sentidos)
+- [Phase 01-04]: DEBOUNCE_MS mantido em 250ms - ajuste empirico deferido a verificacao end-of-phase com rajada real do GSD
+- [Phase 01-04]: watch.ts e board-store.ts formam ciclo de import mutuo deliberado (function declarations hoisted) para classifyChangedPath/startWatching vs useBoardStore
 
 ### Pending Todos
 
@@ -100,6 +103,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-23T03:00:49.018Z
+Last session: 2026-07-23T03:24:33.900Z
 Stopped at: Completed 01-03-PLAN.md
 Resume file: None
