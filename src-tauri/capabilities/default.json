@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capabilities somente-leitura do GSD Cards: o board espelha .planning/ mas nunca escreve, cria, remove ou renomeia arquivos (board read-only por decisão de produto).",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "dialog:allow-open",
+    "fs:allow-read-text-file",
+    "fs:allow-read-dir",
+    "fs:allow-exists"
+  ]
+}

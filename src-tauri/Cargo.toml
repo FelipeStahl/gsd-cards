@@ -1,0 +1,20 @@
+[package]
+name = "gsd-cards"
+version = "0.1.0"
+description = "GSD Cards — board kanban hierárquico que espelha o .planning/ do gsd-core em tempo real"
+authors = ["GSD Cards contributors"]
+edition = "2021"
+
+[lib]
+name = "gsd_cards_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
