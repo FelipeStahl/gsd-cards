@@ -23,7 +23,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **SESS-03**: Usuário navega entre sessões sem fechar nenhuma — terminais continuam vivos em background
 - [ ] **SESS-04**: Sessões persistem entre aberturas do app e são restauradas ao reabrir (snapshot do buffer + histórico via `claude --resume`, restauração lazy)
 - [ ] **SESS-05**: Usuário renomeia sessões
-- [ ] **SESS-06**: Usuário arquiva/exclui sessões, com encerramento limpo da árvore de processos (sem zombie processes)
+- [x] **SESS-06**: Usuário arquiva/exclui sessões, com encerramento limpo da árvore de processos (sem zombie processes)
 
 ### Terminal (TERM)
 
@@ -103,7 +103,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SESS-03 | Phase 2 | Pending |
 | SESS-04 | Phase 4 | Pending |
 | SESS-05 | Phase 4 | Pending |
-| SESS-06 | Phase 2 | Pending |
+| SESS-06 | Phase 2 | Complete |
 | TERM-01 | Phase 2 | Pending |
 | TERM-02 | Phase 2 | Pending |
 | TERM-03 | Phase 2 | Pending |

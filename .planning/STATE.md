@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: sess-o-viva
 status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-07-23T17:02:32.847Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-07-23T17:10:43.859Z"
 last_activity: 2026-07-23
 last_activity_desc: Phase 02 execution resumed (wave continue)
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 14
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 02 (sess-o-viva) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-07-23 — Phase 02 execution resumed (wave continue)
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 71%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [██████████] 100%
 | Phase 01 P05 | 30min | 3 tasks | 24 files |
 | Phase 01 P06 | 35min | 3 tasks | 16 files |
 | Phase 01 P07 | 22min | 2 tasks | 4 files |
+| Phase 02 P02 | 7min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,8 @@ Recent decisions affecting current work:
 - [Phase 01-06]: milestone history loads in the background during openProject, guarded by a root check so a project switch racing the promise never corrupts a different project's state
 - [Phase 01-07]: CR-02 - affectedIds une o merge de diretorio com os ids cujos blockers mudaram por conteudo (blockersEqual), nao por referencia de array
 - [Phase 01-07]: CR-03 - fase dona de um artefato cacheado e derivada do penultimo segmento do caminho via parsePhaseDirName (reaproveitado de phase-scan.ts), sem parser novo
+- [Phase 02-02]: sysinfo pinado em 0.38.4 (não 0.39.x) porque o toolchain deste ambiente (rustc 1.94.1) não atende a MSRV 1.95 do 0.39
+- [Phase 02-02]: process_guard virou pub mod em lib.rs para o teste de integração externo em tests/tree_kill.rs poder exercitar TreeGuard diretamente
 
 ### Pending Todos
 
@@ -117,6 +120,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-23T10:15:36.537Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-07-23T17:10:43.845Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
