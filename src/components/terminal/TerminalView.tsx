@@ -8,18 +8,20 @@
 // com o `sessionId` ainda vivo no `PtyManager` (`AlreadyExists`).
 //
 // Plano 05 estende o tracer (Plano 01) com scrollback/copy-on-select já
-// confirmados + links clicáveis (`WebLinksAddon`, TERM-02). Busca
-// (`SearchAddon`, TERM-03) e o algoritmo de foco/WebGL (Plano 06) vêm a
-// seguir, sobre esta mesma instância.
+// confirmados + links clicáveis (`WebLinksAddon`, TERM-02) e busca no
+// scrollback (`SearchAddon` + `TerminalSearchBar`, TERM-03). O algoritmo de
+// foco/WebGL (Plano 06) vem a seguir, sobre esta mesma instância.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Terminal, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import "@xterm/xterm/css/xterm.css";
 
 import { killSession, resizeSession, spawnSession, writeSession } from "../../pty/channel";
+import { TerminalSearchBar } from "./TerminalSearchBar";
 
 // Mesmo padrão de `ArtifactModal.tsx` (T-01-02): só esquema http(s) é
 // aberto — nunca `file:`/`javascript:`/outro esquema arbitrário do output
@@ -92,10 +94,18 @@ interface TerminalViewProps {
 
 export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
+  const terminalRef = useRef<Terminal | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // Nova sessão montando nesta mesma instância do componente (o rail não
+    // usa `key={sessionId}` — troca de sessão reusa o componente) — a barra
+    // de busca de uma sessão anterior não deve vazar para a próxima.
+    setSearchOpen(false);
 
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const terminal = new Terminal({
@@ -108,6 +118,7 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
       disableStdin: false,
       theme: prefersDark ? DARK_THEME : LIGHT_THEME,
     });
+    terminalRef.current = terminal;
 
     const fitAddon = new FitAddon();
     terminal.loadAddon(fitAddon);
@@ -124,6 +135,14 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
       });
     });
     terminal.loadAddon(webLinksAddon);
+
+    // TERM-03: busca no scrollback. `decorations` precisa ser passado nas
+    // chamadas de busca (não no construtor do addon) para que
+    // `onDidChangeResults` dispare com o contador current/total que
+    // `TerminalSearchBar` usa (typings/addon-search.d.ts).
+    const searchAddon = new SearchAddon();
+    terminal.loadAddon(searchAddon);
+    searchAddonRef.current = searchAddon;
 
     terminal.open(container);
     fitAddon.fit();
@@ -144,6 +163,20 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
 
     const dataDisposable = terminal.onData((data) => {
       void writeSession(sessionId, data);
+    });
+
+    // Ctrl+F/Cmd+F com o terminal focado abre a search bar (02-UI-SPEC.md
+    // ## Terminal Search Bar) — `preventDefault` para que o navegador não
+    // abra sua própria busca nativa, e `return false` para que o xterm.js
+    // não insira o atalho como input do PTY.
+    terminal.attachCustomKeyEventHandler((event) => {
+      if (event.type !== "keydown") return true;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        setSearchOpen(true);
+        return false;
+      }
+      return true;
     });
 
     let disposed = false;
@@ -169,6 +202,8 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
       selectionDisposable.dispose();
       dataDisposable.dispose();
       terminal.dispose();
+      searchAddonRef.current = null;
+      terminalRef.current = null;
       // Mata a árvore de processos desta sessão — necessário para o
       // double-invoke do StrictMode não colidir com `AlreadyExists` no
       // remount seguinte, e para nenhuma sessão sobreviver ao fechamento
@@ -177,5 +212,18 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
     };
   }, [sessionId, projectRoot]);
 
-  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
+  function handleCloseSearch() {
+    setSearchOpen(false);
+    // Esc devolve o foco ao terminal (02-UI-SPEC.md ## Terminal Search Bar).
+    terminalRef.current?.focus();
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%" }}>
+      {searchOpen && searchAddonRef.current ? (
+        <TerminalSearchBar searchAddon={searchAddonRef.current} onClose={handleCloseSearch} />
+      ) : null}
+      <div ref={containerRef} style={{ flex: 1, minHeight: 0 }} />
+    </div>
+  );
 }

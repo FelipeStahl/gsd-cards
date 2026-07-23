@@ -13,10 +13,13 @@ import artifactPtBR from "./locales/pt-BR/artifact.json";
 import artifactEn from "./locales/en/artifact.json";
 import sessionPtBR from "./locales/pt-BR/session.json";
 import sessionEn from "./locales/en/session.json";
+import terminalPtBR from "./locales/pt-BR/terminal.json";
+import terminalEn from "./locales/en/terminal.json";
 
 // Estrutura deliberada: um arquivo por namespace (`common.json`, `project.json`,
 // `board.json`, `sync.json`, `artifact.json` — Plano 05, `session.json` —
-// Plano 02-01) para que planos paralelos não disputem o mesmo arquivo.
+// Plano 02-01, `terminal.json` — Plano 02-05) para que planos paralelos não
+// disputem o mesmo arquivo.
 export const resources = {
   "pt-BR": {
     common: commonPtBR,
@@ -25,6 +28,7 @@ export const resources = {
     sync: syncPtBR,
     artifact: artifactPtBR,
     session: sessionPtBR,
+    terminal: terminalPtBR,
   },
   en: {
     common: commonEn,
@@ -33,6 +37,7 @@ export const resources = {
     sync: syncEn,
     artifact: artifactEn,
     session: sessionEn,
+    terminal: terminalEn,
   },
 } as const;
 
@@ -41,7 +46,7 @@ void i18next.use(initReactI18next).init({
   lng: "pt-BR",
   fallbackLng: "pt-BR",
   defaultNS: "common",
-  ns: ["common", "project", "board", "sync", "artifact", "session"],
+  ns: ["common", "project", "board", "sync", "artifact", "session", "terminal"],
   interpolation: {
     escapeValue: false,
   },
