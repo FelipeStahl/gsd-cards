@@ -222,6 +222,42 @@ describe("reprocessPaths — restrito à fase 02", () => {
   });
 });
 
+describe("reprocessPaths — lote concorrente STATE.md (novo blocker) + diretório de outra fase (CR-02)", () => {
+  it("aplica o blocker novo à fase 5 mesmo quando só a fase 01 foi varrida no mesmo lote", async () => {
+    seedProject([
+      makePhase({ id: "01", number: 1 }),
+      makePhase({ id: "05", number: 5, name: "Fase futura" }),
+    ]);
+
+    readPlanningTextMock.mockImplementation(async (path: string) => {
+      if (path === `${PLANNING}/STATE.md`) {
+        return `${validStateMarkdown()}\n## Accumulated Context\n\n### Blockers/Concerns\n\n- [Phase 5]: Bloqueio novo de teste\n`;
+      }
+      throw new Error(`não mockado: ${path}`);
+    });
+    listPlanningDirMock.mockImplementation(async (dir: string) => {
+      if (dir === `${PLANNING}/phases`) return [dirEntry("01-espelho-fiel", true)];
+      if (dir === `${PLANNING}/phases/01-espelho-fiel`) return [];
+      throw new Error(`diretório não mockado: ${dir}`);
+    });
+
+    // Lote único: STATE.md (novo blocker citando a fase 5) + um arquivo da
+    // fase 01 (a única fase cujo diretório é varrido neste lote).
+    await useBoardStore.getState().reprocessPaths([
+      `${PLANNING}/STATE.md`,
+      `${PLANNING}/phases/01-espelho-fiel/01-01-SUMMARY.md`,
+    ]);
+
+    const phases = useBoardStore.getState().project?.phases ?? [];
+    const phase5 = phases.find((phase) => phase.number === 5);
+    expect(phase5?.blockers.some((blocker) => blocker.phases.includes(5))).toBe(true);
+
+    // O badge/glow (D-13/D-09) também deve acionar na fase 5, mesmo não
+    // tocada pelo lote de varredura de diretório.
+    expect(useBoardStore.getState().recentlyUpdatedPhaseIds).toContain("05");
+  });
+});
+
 describe("reprocessPaths — leitura falha preserva o estado anterior", () => {
   it("mantém milestone/currentPhase anteriores e registra uma ParseIssue quando STATE.md falha ao ler", async () => {
     seedProject([makePhase({ id: "01", number: 1 })]);

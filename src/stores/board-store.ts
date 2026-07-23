@@ -413,6 +413,19 @@ function mergePhaseModels(
   return { phases: merged, affectedIds };
 }
 
+/** Compara dois arrays de `PhaseBlocker` por conteúdo (não por referência) — usado para detectar quais fases realmente mudaram de blockers ao reaplicar o filtro (correção CR-02). */
+function blockersEqual(a: PhaseBlocker[], b: PhaseBlocker[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((blocker, index) => {
+    const other = b[index];
+    return (
+      blocker.text === other.text &&
+      blocker.phases.length === other.phases.length &&
+      blocker.phases.every((phase, phaseIndex) => phase === other.phases[phaseIndex])
+    );
+  });
+}
+
 /** Janela do glow de atualização em tempo real (D-13) — ~1000ms, sem toast. */
 const GLOW_WINDOW_MS = 1000;
 
@@ -607,14 +620,29 @@ export const useBoardStore = create<BoardStoreState>()(
         const merged = mergePhaseModels(phases, scannedSubset, blockers);
         phases = merged.phases;
         affectedIds = merged.affectedIds;
-      } else if (blockersChanged) {
-        // STATE.md mudou os blockers mas nenhuma fase específica foi tocada
-        // neste lote — reaplica o filtro de blockers sobre o array atual
-        // (sem I/O extra, um blocker novo pode citar qualquer fase).
+      }
+      if (blockersChanged) {
+        // Correção CR-02: reaplica o filtro de blockers a TODAS as fases
+        // sempre que `blockersChanged`, independentemente de qual branch
+        // (se algum) tratou a varredura de diretório deste lote — um
+        // blocker novo em STATE.md pode citar qualquer fase, inclusive uma
+        // não tocada pelo lote atual. Este bloco é INDEPENDENTE do `if`
+        // acima (não `else if`), porque os dois podem disparar juntos no
+        // mesmo lote de debounce.
+        const previousBlockersByNumber = new Map(
+          phases.map((phase) => [phase.number, phase.blockers]),
+        );
         phases = phases.map((phase) => ({
           ...phase,
           blockers: blockers.filter((blocker) => blocker.phases.includes(phase.number)),
         }));
+        const blockerAffectedIds = phases
+          .filter((phase) => {
+            const previous = previousBlockersByNumber.get(phase.number) ?? [];
+            return !blockersEqual(previous, phase.blockers);
+          })
+          .map((phase) => phase.id);
+        affectedIds = Array.from(new Set([...affectedIds, ...blockerAffectedIds]));
       }
 
       const syncedAt = Date.now();
