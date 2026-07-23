@@ -7,6 +7,7 @@ GSD Cards evolui de um espelho fiel do `.planning/` a um orquestrador completo d
 ## Phases
 
 **Phase Numbering:**
+
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
@@ -21,77 +22,104 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Espelho fiel
+
 **Goal**: Usuário abre um projeto GSD e vê, em tempo real, um board kanban hierárquico que espelha fielmente o `.planning/` — o valor central do produto.
 **Mode:** mvp
 **Depends on**: Nothing (first phase)
 **Decision gate**: Tauri vs. Electron — resolver no início da fase (decisão executiva informada por `research/STACK.md` + `research/ARCHITECTURE.md`) antes de consolidar a stack; desbloqueia toda a arquitetura subsequente.
 **Requirements**: PROJ-02, BOARD-01, BOARD-02, BOARD-03, BOARD-04, BOARD-05, BOARD-06
 **Success Criteria** (what must be TRUE):
+
   1. Usuário abre um diretório e o app só o aceita como projeto após validar a presença de `.planning/`, com aviso claro quando ausente.
   2. Usuário vê um board kanban com cards de fase distribuídos em colunas que correspondem aos status reais de fase do gsd-core.
   3. Usuário expande um card de fase e vê a hierarquia de 3 níveis (fase → planos → tarefas) derivada dos artefatos reais, com indicadores de progresso de projeto e de fases.
   4. O board atualiza sozinho quando o `.planning/` muda no disco, sem refresh manual (file watching debounced, sem piscar durante rajadas de escrita do GSD).
   5. Diante de um artefato não parseável, o board exibe aviso/raw em vez de mentir silenciosamente, e o usuário abre a visualização renderizada de PLAN/SUMMARY/VERIFICATION a partir do card.
+
 **Plans**: 6 plans
 Plans:
+**Wave 1**
+
 - [ ] 01-01-PLAN.md — Fundação executável: toolchain Rust/MSVC, scaffold Tauri v2 + React + TS, tokens do UI-SPEC, i18n e CI multiplataforma
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 01-02-PLAN.md — Abrir e validar um projeto GSD (PROJ-02), esqueleto de layout e header com dados reais de STATE.md
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 01-03-PLAN.md — Board kanban de 4 colunas com cards de fase derivados da regra de status do gsd-core
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 01-04-PLAN.md — Espelho vivo: watcher Rust debounced, reprocessamento incremental e indicador de sincronização
 - [ ] 01-05-PLAN.md — Painel de detalhe hierárquico e modal de artefato com render GFM e modo raw
 - [ ] 01-06-PLAN.md — Histórico de milestones e guarda de regressão contra evolução de formato do gsd-core
+
 **UI hint**: yes
 
 ### Phase 2: Sessão viva
+
 **Goal**: Usuário cria sessões do Claude na sidebar e conversa com o `claude` interativo em um terminal real embutido, com múltiplos terminais vivos em paralelo e encerramento limpo da árvore de processos.
 **Mode:** mvp
 **Depends on**: Phase 1
 **Requirements**: PROJ-04, SESS-01, SESS-02, SESS-03, SESS-06, TERM-01, TERM-02, TERM-03
 **Success Criteria** (what must be TRUE):
+
   1. Quando Claude CLI ou gsd-core não estão instalados, o app mostra instrução clara de instalação (sem auto-instalar); com eles presentes, o usuário vê as sessões do projeto na sidebar e cria uma nova, que faz spawn do `claude` no diretório do projeto.
   2. Usuário interage com um terminal real embutido no drawer direito rodando o `claude` interativo, com scrollback limitado, copiar/colar e links clicáveis.
   3. Usuário navega entre sessões sem fechar nenhuma — os terminais das sessões inativas continuam vivos em background.
   4. Usuário busca texto no scrollback do terminal e encontra ocorrências anteriores.
   5. Usuário arquiva/exclui uma sessão e a árvore de processos é encerrada de forma limpa — nenhum processo zumbi permanece, inclusive ao fechar o app no Windows (tree-kill validado como critério de fundação).
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 3: Board interativo
+
 **Goal**: O board deixa de ser só espelho e passa a guiar o fluxo: cards mostram ações contextuais por status e disparam o `/gsd-*` certo no terminal da sessão, com segurança contra injeção quando o Claude está ocupado.
 **Mode:** mvp
 **Depends on**: Phase 1 (board), Phase 2 (sessões/terminal)
 **Requirements**: ACT-01, ACT-02, ACT-03, ACT-04
 **Success Criteria** (what must be TRUE):
+
   1. Cada card de fase oferece as ações contextuais corretas para seu status (pending→Discutir, discussed→Planejar, planned→Executar, executed→Verificar...).
   2. Ao disparar uma ação, o comando `/gsd-*` correto é enviado ao terminal da sessão escolhida/ativa e aparece no `claude`.
   3. O app detecta o estado do terminal (ocioso/ocupado/aguardando permissão) e não injeta comandos enquanto o Claude está ocupado.
   4. Usuário aciona atalhos GSD (paleta/botões de comandos `/gsd-*`) no drawer junto ao terminal.
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 4: Casa persistente
+
 **Goal**: O app vira a casa persistente do fluxo diário: página principal multi-projeto com saúde, criação de projeto do zero, troca entre projetos sem perder sessões, e sessões que persistem e restauram ao reabrir.
 **Mode:** mvp
 **Depends on**: Phase 2 (sessões/PTY), Phase 1 (board multi-projeto)
 **Requirements**: PROJ-01, PROJ-03, PROJ-05, PROJ-06, SESS-04, SESS-05, TERM-04
 **Success Criteria** (what must be TRUE):
+
   1. Na página principal, usuário vê a lista de projetos recentes ordenada por último acesso, cada um com saúde derivada de STATE.md (fase atual, % de progresso, bloqueios pendentes).
   2. Usuário cria um projeto GSD do zero apontando uma pasta vazia/nova; o app abre uma sessão e conduz o `/gsd-new-project`.
   3. Usuário alterna entre múltiplos projetos abertos sem que nenhuma sessão de nenhum deles seja fechada.
   4. Ao reabrir o app, as sessões são restauradas (snapshot do buffer + histórico via `claude --resume`, restauração lazy), comunicando visualmente que é histórico restaurado, não processo contínuo.
   5. Usuário renomeia sessões e é notificado (alerta do SO + badge na sidebar) quando uma sessão termina ou precisa de input.
+
 **Plans**: TBD
 **UI hint**: yes
 
 ### Phase 5: Comunidade
+
 **Goal**: O app está pronto para a comunidade GSD: UI bilíngue pt-BR/en, instalador empacotado multiplataforma e auto-atualização.
 **Mode:** mvp
 **Depends on**: Phase 4
 **Requirements**: DIST-01, DIST-02, DIST-03
 **Success Criteria** (what must be TRUE):
+
   1. Usuário usa a UI em pt-BR ou inglês e alterna o idioma (infraestrutura i18n adotada desde a fundação, verificada completa aqui).
   2. Usuário instala o app via instalador empacotado (Windows primeiro; macOS/Linux também).
   3. O app detecta uma nova versão e se atualiza automaticamente.
+
 **Plans**: TBD
 **UI hint**: yes
 
