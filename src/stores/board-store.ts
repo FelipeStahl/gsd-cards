@@ -474,6 +474,7 @@ export const useBoardStore = create<BoardStoreState>()(
               phases,
               milestones: emptyMilestones(),
               issues: parsedState.issues,
+              hasGsdCore: validated.hasGsdCore,
             };
           } else {
             const parsed = parsedState.value;
@@ -488,6 +489,7 @@ export const useBoardStore = create<BoardStoreState>()(
               phases,
               milestones: emptyMilestones(),
               issues: parsed.issues,
+              hasGsdCore: validated.hasGsdCore,
             };
           }
           state.status = "open";

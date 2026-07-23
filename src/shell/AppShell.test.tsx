@@ -3,16 +3,40 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import { ok } from "../planning/parse-result";
 import { useBoardStore } from "../stores/board-store";
+import { useSessionStore } from "../stores/session-store";
 import { AppShell } from "./AppShell";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: vi.fn().mockResolvedValue(null),
 }));
 
+// SessionSidebar (SESS-01/PROJ-04) invoca `check_claude_on_path` (boot) e
+// `register_sessions_scope` (open/reopen) — nenhum teste deste arquivo
+// exercita o gate de ferramentas ausentes (ver `SessionSidebar.test.tsx`
+// para essa suíte dedicada), então `claude` resolve como presente por
+// padrão e a descoberta de sessões degrada silenciosamente.
+const invokeMock = vi.fn();
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (...args: unknown[]) => invokeMock(...args),
+}));
+vi.mock("@tauri-apps/plugin-fs", () => ({
+  readDir: vi.fn().mockRejectedValue(new Error("not mocked in this test")),
+  stat: vi.fn(),
+}));
+
 const initialState = useBoardStore.getState();
+const initialSessionState = useSessionStore.getState();
 
 beforeEach(() => {
   useBoardStore.setState(initialState, true);
+  useSessionStore.setState(initialSessionState, true);
+  invokeMock.mockReset();
+  invokeMock.mockImplementation((command: string) => {
+    if (command === "check_claude_on_path") {
+      return Promise.resolve({ claudePath: "/usr/local/bin/claude" });
+    }
+    return Promise.reject(new Error("register_sessions_scope indisponível neste teste"));
+  });
 });
 
 describe("AppShell", () => {
@@ -23,6 +47,13 @@ describe("AppShell", () => {
     expect(
       screen.getByRole("button", { name: "Abrir projeto" }),
     ).toBeInTheDocument();
+  });
+
+  it("monta a SessionSidebar real (Plano 04) no lugar do SidebarPlaceholder — mesmo slot 240px fixo", () => {
+    render(<AppShell />);
+
+    expect(screen.getByText("Sessões")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nova sessão" })).toBeInTheDocument();
   });
 
   it("estado error (pasta não é projeto GSD): mostra o heading de erro e não mostra o board", () => {

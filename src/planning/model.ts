@@ -71,4 +71,13 @@ export interface ProjectStateModel {
   phases: PhaseModel[];
   milestones: MilestoneHistoryEntry[];
   issues: ParseIssue[];
+  /**
+   * Aditivo (Fase 2 Plano 04, PROJ-04) — espelha `ValidatedProject.hasGsdCore`
+   * (já calculado por `validate_project_root`, Fase 1). Opcional para não
+   * quebrar literais `project: {...}` já escritos em testes anteriores a
+   * este campo existir; ausência é tratada como "presente" (`?? true`) pelos
+   * consumidores, já que o gate real de PROJ-04 só se aplica quando um
+   * projeto de fato validado está aberto.
+   */
+  hasGsdCore?: boolean;
 }

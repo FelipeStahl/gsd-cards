@@ -23,3 +23,22 @@ serde_json = "1"
 dunce = "1"
 notify = "9.0.0-rc.4"
 notify-debouncer-full = "0.8.0-rc.2"
+portable-pty = "0.9.0"
+which = "8.0.5"
+tauri-plugin-opener = "2"
+
+[target.'cfg(windows)'.dependencies]
+win32job = "2.0.3"
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.31.3", features = ["signal"] }
+
+[dev-dependencies]
+# 0.38.4 (não a 0.39.x mais recente): sysinfo 0.39.x exige rustc 1.95, e o
+# toolchain deste ambiente é 1.94.1 — 0.38.4 é a última série compatível
+# (rust-version 1.88), API de refresh_processes/Pid idêntica à usada aqui.
+sysinfo = "0.38.4"
+
+[[bin]]
+name = "tree_kill_helper"
+path = "src/bin/tree_kill_helper.rs"

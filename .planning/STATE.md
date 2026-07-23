@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 01
-current_phase_name: espelho-fiel
-status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-07-23T10:49:36.519Z"
+current_phase: 02
+current_phase_name: sess-o-viva
+status: verifying
+stopped_at: Completed 02-06-PLAN.md (Phase 02 fully executed — ready for verification)
+last_updated: "2026-07-23T18:26:14.009Z"
 last_activity: 2026-07-23
-last_activity_desc: Phase 01 gap-closure executed and re-verified (3/3 gaps closed; human UAT pending)
+last_activity_desc: Phase 02 execution resumed (wave continue)
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 8
-  completed_plans: 8
+  total_phases: 2
+  completed_phases: 2
+  total_plans: 14
+  completed_plans: 14
 ---
 
 # Project State
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Abrir o app e ver fielmente, em tempo real, onde cada projeto GSD está — o board é um espelho confiável do `.planning/`.
-**Current focus:** Phase 01 — espelho-fiel
+**Current focus:** Phase 02 — sess-o-viva
 
 ## Current Position
 
-Phase: 01 (espelho-fiel) — EXECUTED (human UAT pending)
-Plan: 8 of 8
-Status: Executed — human UAT pending
-Last activity: 2026-07-23 — Phase 01 gap-closure executed and re-verified
+Phase: 02 (sess-o-viva) — EXECUTING
+Plan: 6 of 6
+Status: Phase complete — ready for verification
+Last activity: 2026-07-23 — Phase 02 execution resumed (wave continue)
 
 Progress: [██████████] 100%
 
@@ -65,6 +65,11 @@ Progress: [██████████] 100%
 | Phase 01 P05 | 30min | 3 tasks | 24 files |
 | Phase 01 P06 | 35min | 3 tasks | 16 files |
 | Phase 01 P07 | 22min | 2 tasks | 4 files |
+| Phase 02 P02 | 7min | 2 tasks | 4 files |
+| Phase 02 P03 | 9min | 2 tasks | 11 files |
+| Phase 02 P04 | 16min | 2 tasks | 20 files |
+| Phase 02 P05 | 20min | 2 tasks | 11 files |
+| Phase 02 P06 | 25min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -92,6 +97,20 @@ Recent decisions affecting current work:
 - [Phase 01-06]: milestone history loads in the background during openProject, guarded by a root check so a project switch racing the promise never corrupts a different project's state
 - [Phase 01-07]: CR-02 - affectedIds une o merge de diretorio com os ids cujos blockers mudaram por conteudo (blockersEqual), nao por referencia de array
 - [Phase 01-07]: CR-03 - fase dona de um artefato cacheado e derivada do penultimo segmento do caminho via parsePhaseDirName (reaproveitado de phase-scan.ts), sem parser novo
+- [Phase 02-02]: sysinfo pinado em 0.38.4 (não 0.39.x) porque o toolchain deste ambiente (rustc 1.94.1) não atende a MSRV 1.95 do 0.39
+- [Phase 02-02]: process_guard virou pub mod em lib.rs para o teste de integração externo em tests/tree_kill.rs poder exercitar TreeGuard diretamente
+- [Phase 02-03]: has_gsd_core modelado como diretório-local OR home OR which gsd-tools (sem doctor oficial do gsd-core), documentado em project.rs
+- [Phase 02-03]: hasGsdCore adicionado ao ValidatedProject de read.ts (fora do files_modified do plano) para check.ts ter acesso tipado ao campo já serializado pelo Rust
+- [Phase 02-03]: register_sessions_scope não exige que a subpasta codificada exista - allow_directory é só registro de ACL glob, sem I/O; degradação a [] fica inteiramente em discover.ts
+- [Phase ?]: SessionSidebar built in two layers across Task1/Task2 so Task1's isolated verify never imports a not-yet-created ToolMissingState module
+- [Phase ?]: hasGsdCore added as OPTIONAL on ProjectStateModel to avoid breaking pre-existing project:{...} test literals across the codebase
+- [Phase ?]: gsd-core-missing gate only applies when a project is open (defaults to present); claude-missing gates globally on first sidebar mount
+- [Phase ?]: [Phase 02-05]: tauri-plugin-opener pinado como "2" (não exato) para seguir a convenção dos plugins irmãos já no Cargo.toml
+- [Phase ?]: [Phase 02-05]: TerminalSearchBar recebe o addon via SearchAddonHandle (contrato estrutural mínimo), não a classe SearchAddon real — addon-search real exige canvas/matchMedia indisponíveis em jsdom sem o pacote canvas
+- [Phase ?]: [Phase 02-05]: ISearchOptions.decorations é passado por chamada de busca (findNext/findPrevious), não no construtor do addon — sem isso onDidChangeResults não dispara o contador current/total
+- [Phase ?]: [Phase 02-06]: liveSessions implementado como Map de módulo fora do shape zustand/immer — o autoFreeze do immer congela recursivamente todo o estado a cada set(), inclusive campos não tocados, o que quebraria a mutação direta de um Map alcançável pelo estado
+- [Phase ?]: [Phase 02-06]: spawnSession só é chamado uma vez por sessão (hasLiveSession); troca de foco depois disso só redireciona setSessionBytesHandler — resolve o double-invoke do StrictMode sem matar/recriar a sessão
+- [Phase ?]: [Phase 02-06]: Archive/Delete restritos a rows não-históricas — sessão histórica não tem PtySession viva a matar
 
 ### Pending Todos
 
@@ -106,6 +125,7 @@ None yet.
 - [Phase 1]: Tauri vs. Electron ainda não decidido — bloqueia a consolidação da stack; primeira entrega da Fase 1 é o spike/decisão.
 - [Phase 1/4]: Fragilidade do parser vs. evolução do formato gsd-core — mitigar com fixtures versionadas (definir na Fase 1, validar na Fase 4).
 - [Phase 2]: Zombie processes do PTY / ConPTY no Windows — tree-kill e handlers de saída como critério de fundação, testar em máquina Windows real.
+- [Phase 02-05]: Nenhum plano da Fase 2 (01-06) construiu o TerminalPane/chrome header (02-UI-SPEC.md) — o ícone Buscar 32x32 não existe; TerminalSearchBar abre só via Ctrl+F/Cmd+F. Registrado em WINDOWS.md.
 
 ## Deferred Items
 
@@ -117,6 +137,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-23T10:15:36.537Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-07-23T18:26:13.996Z
+Stopped at: Completed 02-06-PLAN.md (Phase 02 fully executed — ready for verification)
 Resume file: None

@@ -1,0 +1,17 @@
+{
+  "search": {
+    "placeholder": "Buscar no terminal…",
+    "noMatches": "0/0",
+    "matchCount": "{{current}}/{{total}}",
+    "previous": "Ocorrência anterior",
+    "next": "Próxima ocorrência",
+    "close": "Fechar busca"
+  },
+  "actions": {
+    "search": "Buscar",
+    "collapse": "Recolher terminal"
+  },
+  "chrome": {
+    "exitedBanner": "Sessão encerrada"
+  }
+}

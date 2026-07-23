@@ -10,11 +10,11 @@ import { ArtifactModal } from "../components/ArtifactModal";
 import { DetailPanel } from "../components/DetailPanel";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
+import { SessionSidebar } from "../components/session/SessionSidebar";
 import { useBoardStore } from "../stores/board-store";
 import { Board } from "./Board";
 import { DrawerRail } from "./DrawerRail";
 import { Header } from "./Header";
-import { SidebarPlaceholder } from "./SidebarPlaceholder";
 
 export function AppShell() {
   const { t } = useTranslation("project");
@@ -42,7 +42,7 @@ export function AppShell() {
     >
       <Header />
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <SidebarPlaceholder />
+        <SessionSidebar />
         <main
           style={{
             flex: 1,

@@ -1,0 +1,74 @@
+---
+schema_version: 1
+open_count: 4
+waived_count: 0
+fixed_count: 0
+total_count: 4
+last_updated: 2026-07-23T18:24:13.863Z
+---
+
+# Broken Windows Ledger
+
+> Cross-phase defect register. `/gsd-ship` blocks while `open_count > 0`.
+> Waive with `gsd-tools windows waive <id> "<reason>"` (reason required).
+> Mark fixed with `gsd-tools windows fixed <id>`.
+
+| id | phase | kind | file | line | description | status | reason | recorded_at | resolved_at |
+|----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
+| 1 | 02 | deviation | src/locales/pt-BR/session.json |  | toolMissing.*.body copy kept generic ('consulte a documentação oficial') per UI-SPEC's own flagged unresolved item — not independently re-verified against current official install docs | open |  | 2026-07-23T17:38:59.572Z |  |
+| 2 | 02 | deviation | src/components/terminal/TerminalView.tsx |  | TerminalSearchBar só abre via Ctrl+F/Cmd+F nesta fase — o ícone de busca do chrome header (TerminalPane) não existe em nenhum plano executado (01-06); adicionar o toggle por ícone quando TerminalPane for construído | open |  | 2026-07-23T17:54:39.675Z |  |
+| 3 | 02 | deviation | src/components/session/SessionRow.tsx |  | Archive row removal renders instantly (no 150ms fade+collapse per 02-UI-SPEC) — the transient animation needs a pending-removal state in SessionSidebar.tsx, which is out of this plan's declared file scope | open |  | 2026-07-23T18:24:13.726Z |  |
+| 4 | 02 | deviation | src/components/terminal/TerminalView.tsx |  | In React StrictMode dev-only double-invoke, the second (surviving) terminal instance's initial resize_session may not be retried after spawn_session resolves (only the first mount's promise chain retries) — cosmetic, dev-only; production builds mount once and are unaffected | open |  | 2026-07-23T18:24:13.863Z |  |
+
+````json
+[
+  {
+    "id": 1,
+    "kind": "deviation",
+    "phase": "02",
+    "file": "src/locales/pt-BR/session.json",
+    "line": null,
+    "description": "toolMissing.*.body copy kept generic ('consulte a documentação oficial') per UI-SPEC's own flagged unresolved item — not independently re-verified against current official install docs",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-07-23T17:38:59.572Z",
+    "resolved_at": null
+  },
+  {
+    "id": 2,
+    "kind": "deviation",
+    "phase": "02",
+    "file": "src/components/terminal/TerminalView.tsx",
+    "line": null,
+    "description": "TerminalSearchBar só abre via Ctrl+F/Cmd+F nesta fase — o ícone de busca do chrome header (TerminalPane) não existe em nenhum plano executado (01-06); adicionar o toggle por ícone quando TerminalPane for construído",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-07-23T17:54:39.675Z",
+    "resolved_at": null
+  },
+  {
+    "id": 3,
+    "kind": "deviation",
+    "phase": "02",
+    "file": "src/components/session/SessionRow.tsx",
+    "line": null,
+    "description": "Archive row removal renders instantly (no 150ms fade+collapse per 02-UI-SPEC) — the transient animation needs a pending-removal state in SessionSidebar.tsx, which is out of this plan's declared file scope",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-07-23T18:24:13.726Z",
+    "resolved_at": null
+  },
+  {
+    "id": 4,
+    "kind": "deviation",
+    "phase": "02",
+    "file": "src/components/terminal/TerminalView.tsx",
+    "line": null,
+    "description": "In React StrictMode dev-only double-invoke, the second (surviving) terminal instance's initial resize_session may not be retried after spawn_session resolves (only the first mount's promise chain retries) — cosmetic, dev-only; production builds mount once and are unaffected",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-07-23T18:24:13.863Z",
+    "resolved_at": null
+  }
+]
+````

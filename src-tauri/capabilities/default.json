@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capabilities somente-leitura do GSD Cards: o board espelha .planning/ mas nunca escreve, cria, remove ou renomeia arquivos (board read-only por decisão de produto).",
+  "description": "Capabilities somente-leitura do GSD Cards: o board espelha .planning/ mas nunca escreve, cria, remove ou renomeia arquivos (board read-only por decisão de produto). Exceção estreita: opener:allow-open-url permite abrir, no navegador padrão do SO, uma URL clicável impressa no output do terminal (TERM-02) — nunca abrir arquivo/programa local.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -11,6 +11,7 @@
     "fs:allow-read-dir",
     "fs:allow-exists",
     "fs:allow-size",
-    "fs:allow-stat"
+    "fs:allow-stat",
+    "opener:allow-open-url"
   ]
 }
