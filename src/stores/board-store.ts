@@ -11,9 +11,15 @@ import {
   validateProjectRoot,
   type ProjectOpenErrorKind,
 } from "../planning/read";
-import { phasesDir, planningDir, roadmapPath, statePath } from "../planning/paths";
+import { milestonesIndexPath, phasesDir, planningDir, roadmapPath, statePath } from "../planning/paths";
 import { parseStateFile } from "../planning/parser/state";
 import { parseRoadmap, type RoadmapModel } from "../planning/parser/roadmap";
+import {
+  parseMilestonesIndex,
+  scanArchivedMilestones,
+  type ArchivedMilestone,
+  type MilestoneIndexEntry,
+} from "../planning/parser/milestones";
 import {
   parsePhaseDirName,
   scanAllPhases,
@@ -29,7 +35,12 @@ import {
 } from "../planning/status";
 import { unrecognized, type ParseIssue } from "../planning/parse-result";
 import { classifyChangedPath, startWatching, stopWatching } from "../planning/watch";
-import type { MilestoneRef, PhaseBlocker, PhaseModel, ProjectStateModel } from "../planning/model";
+import type {
+  MilestoneHistoryEntry,
+  PhaseBlocker,
+  PhaseModel,
+  ProjectStateModel,
+} from "../planning/model";
 
 export type BoardStatus = "idle" | "opening" | "open" | "error";
 
@@ -68,8 +79,60 @@ function deriveProjectName(root: string): string {
   return segments[segments.length - 1] ?? root;
 }
 
-function emptyMilestones(): MilestoneRef[] {
+function emptyMilestones(): MilestoneHistoryEntry[] {
   return [];
+}
+
+/**
+ * Cruza os milestones arquivados (`scanArchivedMilestones` — fonte primária
+ * de exibição da faixa de histórico) com o índice `.planning/MILESTONES.md`
+ * (`parseMilestonesIndex` — só contribui nome/data de envio, quando
+ * disponíveis). Uma versão arquivada sem entrada correspondente no índice
+ * ainda aparece na faixa, apenas com `name`/`shippedDate` nulos.
+ */
+function mergeMilestoneHistory(
+  index: MilestoneIndexEntry[],
+  archived: ArchivedMilestone[],
+): MilestoneHistoryEntry[] {
+  const indexByVersion = new Map<string, MilestoneIndexEntry>();
+  for (const entry of index) {
+    if (entry.version.kind === "ok") {
+      indexByVersion.set(entry.version.value, entry);
+    }
+  }
+
+  return archived.map((milestone) => {
+    const indexEntry = indexByVersion.get(milestone.version);
+    return {
+      ...milestone,
+      name: indexEntry?.name.kind === "ok" ? indexEntry.name.value : null,
+      shippedDate: indexEntry?.shippedDate.kind === "ok" ? indexEntry.shippedDate.value : null,
+    };
+  });
+}
+
+/**
+ * Carrega o histórico de milestones (Plano 06, D-08) para uma raiz de
+ * projeto já validada. Nunca lança: ausência de `.planning/milestones/`
+ * (`scanArchivedMilestones` já degrada para `[]`) ou de `.planning/MILESTONES.md`
+ * (capturado aqui) produzem histórico vazio, não erro — o mesmo padrão de
+ * `loadRoadmapModel` (D-15).
+ */
+async function loadMilestoneHistory(root: string): Promise<MilestoneHistoryEntry[]> {
+  const archived = await scanArchivedMilestones(root);
+
+  let index: MilestoneIndexEntry[] = [];
+  try {
+    const indexPath = milestonesIndexPath(root);
+    const raw = await readPlanningText(indexPath);
+    const result = parseMilestonesIndex(raw, indexPath);
+    if (result.kind === "ok") index = result.value;
+  } catch {
+    // MILESTONES.md ausente ou ilegível — a faixa de histórico segue
+    // funcionando só com os dados de `scanArchivedMilestones`.
+  }
+
+  return mergeMilestoneHistory(index, archived);
 }
 
 function emptySignals(): PhaseDirSignals {
@@ -415,6 +478,19 @@ export const useBoardStore = create<BoardStoreState>()(
             };
           }
           state.status = "open";
+        });
+
+        // Board (Plano 06, D-08): o histórico de milestones carrega em
+        // segundo plano, sem bloquear a renderização do board ativo já
+        // commitado acima — a faixa de histórico começa vazia e se preenche
+        // quando a leitura terminar. Guarda `root` contra o caso do usuário
+        // trocar/fechar o projeto antes desta promise resolver.
+        void loadMilestoneHistory(validated.root).then((milestones) => {
+          set((state) => {
+            if (state.project && state.project.root === validated.root) {
+              state.project.milestones = milestones;
+            }
+          });
         });
 
         // Board (Plano 04): passa a observar `.planning/` desta raiz assim

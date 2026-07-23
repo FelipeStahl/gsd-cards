@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:planning": "vitest run src/planning",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "fixtures:refresh": "node scripts/refresh-fixtures.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

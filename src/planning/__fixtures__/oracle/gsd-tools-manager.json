@@ -1,0 +1,51 @@
+{
+  "milestone_version": "v1.0",
+  "phase_count": 5,
+  "phases": [
+    {
+      "number": "1",
+      "plan_count": 6,
+      "summary_count": 5,
+      "has_context": true,
+      "has_research": true,
+      "verification_status": "not_required",
+      "disk_status": "partial"
+    },
+    {
+      "number": "2",
+      "plan_count": 0,
+      "summary_count": 0,
+      "has_context": false,
+      "has_research": false,
+      "verification_status": "not_required",
+      "disk_status": "no_directory"
+    },
+    {
+      "number": "3",
+      "plan_count": 0,
+      "summary_count": 0,
+      "has_context": false,
+      "has_research": false,
+      "verification_status": "not_required",
+      "disk_status": "no_directory"
+    },
+    {
+      "number": "4",
+      "plan_count": 0,
+      "summary_count": 0,
+      "has_context": false,
+      "has_research": false,
+      "verification_status": "not_required",
+      "disk_status": "no_directory"
+    },
+    {
+      "number": "5",
+      "plan_count": 0,
+      "summary_count": 0,
+      "has_context": false,
+      "has_research": false,
+      "verification_status": "not_required",
+      "disk_status": "no_directory"
+    }
+  ]
+}

@@ -35,11 +35,11 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Board (BOARD)
 
 - [x] **BOARD-01**: Usuário vê board kanban com colunas mapeando os status reais de fase do gsd-core
-- [ ] **BOARD-02**: Cards de fase expandem mostrando planos e tarefas (hierarquia de 3 níveis derivada dos artefatos reais)
+- [x] **BOARD-02**: Cards de fase expandem mostrando planos e tarefas (hierarquia de 3 níveis derivada dos artefatos reais)
 - [x] **BOARD-03**: Board reflete mudanças do `.planning/` em tempo real via file watching, sem refresh manual
 - [x] **BOARD-04**: Usuário vê indicadores de progresso do projeto e das fases (derivados de STATE.md/ROADMAP.md)
-- [ ] **BOARD-05**: Board degrada graciosamente com artefatos não parseáveis (mostra aviso/raw; nunca mente silenciosamente)
-- [ ] **BOARD-06**: Usuário abre visualização renderizada de artefatos (PLAN/SUMMARY/VERIFICATION) a partir do card
+- [x] **BOARD-05**: Board degrada graciosamente com artefatos não parseáveis (mostra aviso/raw; nunca mente silenciosamente)
+- [x] **BOARD-06**: Usuário abre visualização renderizada de artefatos (PLAN/SUMMARY/VERIFICATION) a partir do card
 
 ### Ações GSD (ACT)
 
@@ -109,11 +109,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TERM-03 | Phase 2 | Pending |
 | TERM-04 | Phase 4 | Pending |
 | BOARD-01 | Phase 1 | Complete |
-| BOARD-02 | Phase 1 | Pending |
+| BOARD-02 | Phase 1 | Complete |
 | BOARD-03 | Phase 1 | Complete |
 | BOARD-04 | Phase 1 | Complete |
-| BOARD-05 | Phase 1 | Pending |
-| BOARD-06 | Phase 1 | Pending |
+| BOARD-05 | Phase 1 | Complete |
+| BOARD-06 | Phase 1 | Complete |
 | ACT-01 | Phase 3 | Pending |
 | ACT-02 | Phase 3 | Pending |
 | ACT-03 | Phase 3 | Pending |

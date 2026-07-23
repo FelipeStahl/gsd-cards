@@ -1,8 +1,9 @@
 // Board de 4 colunas (D-05), lado a lado com 16px de gap, dentro da área
-// central do AppShell. Abaixo das colunas: ponto de montagem reservado da
-// faixa de histórico recolhida (D-08) que o Plano 06 preenche.
+// central do AppShell. Abaixo das colunas: faixa de histórico de milestones
+// recolhida (D-08), preenchida pelo Plano 06.
 
 import { BoardColumn } from "../components/BoardColumn";
+import { HistoryStrip } from "../components/HistoryStrip";
 import { selectPhasesByColumn, useBoardStore } from "../stores/board-store";
 import type { BoardColumnId } from "../planning/status";
 
@@ -17,6 +18,7 @@ export function Board() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-2xl)" }}>
       <div
+        data-testid="board-columns"
         style={{
           display: "flex",
           gap: "var(--spacing-md)",
@@ -33,8 +35,7 @@ export function Board() {
         ))}
       </div>
 
-      {/* Slot reservado para a faixa de histórico de milestones (D-08) — preenchido no Plano 06 */}
-      <div data-slot="milestone-history" />
+      <HistoryStrip />
     </div>
   );
 }
