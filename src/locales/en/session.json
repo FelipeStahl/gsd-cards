@@ -1,6 +1,7 @@
 {
   "actions": {
-    "newSession": "New session"
+    "newSession": "New session",
+    "reexpand": "Reopen session"
   },
   "sidebar": {
     "heading": "Sessions",
@@ -18,5 +19,19 @@
     "starting": "Starting…",
     "exited": "(exited)",
     "historicalTooltip": "Session from previous runs — resume arrives in Phase 4"
+  },
+  "toolMissing": {
+    "claude": {
+      "heading": "Claude CLI not found",
+      "body": "Install the Claude CLI and add it to your system PATH. See the official Claude Code documentation for instructions. Reopen this project after installing."
+    },
+    "gsdCore": {
+      "heading": "gsd-core not found in this project",
+      "body": "Install gsd-core in this project (under .claude/gsd-core) or globally to enable sessions and /gsd-* commands."
+    },
+    "both": {
+      "heading": "Claude CLI and gsd-core not found",
+      "body": "Install the Claude CLI and gsd-core before creating sessions. See the official documentation for each tool."
+    }
   }
 }

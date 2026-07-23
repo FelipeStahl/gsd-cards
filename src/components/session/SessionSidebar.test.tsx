@@ -29,7 +29,15 @@ beforeEach(() => {
   useBoardStore.setState(initialBoardState, true);
   useSessionStore.setState(initialSessionState, true);
   invokeMock.mockReset();
-  invokeMock.mockRejectedValue(new Error("register_sessions_scope indisponível neste teste"));
+  // Por padrão: `claude` presente (não é o foco destes testes de
+  // grouping/CTA — `ToolMissingState` tem sua própria suíte dedicada) e
+  // `register_sessions_scope` indisponível (degrada sem sessões históricas).
+  invokeMock.mockImplementation((command: string) => {
+    if (command === "check_claude_on_path") {
+      return Promise.resolve({ claudePath: "/usr/local/bin/claude" });
+    }
+    return Promise.reject(new Error("register_sessions_scope indisponível neste teste"));
+  });
 });
 
 describe("SessionSidebar — zero sessões", () => {
@@ -101,5 +109,63 @@ describe("SessionSidebar — CTA Nova sessão", () => {
     render(<SessionSidebar />);
 
     expect(screen.getByRole("button", { name: "Nova sessão" })).toBeEnabled();
+  });
+});
+
+describe("SessionSidebar — ToolMissingState (PROJ-04)", () => {
+  it("claude ausente: substitui o corpo pelo ToolMissingState e NÃO renderiza o CTA Nova sessão", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "check_claude_on_path") {
+        return Promise.resolve({ claudePath: null });
+      }
+      return Promise.reject(new Error("register_sessions_scope indisponível neste teste"));
+    });
+    openProjectAt("/repo");
+
+    render(<SessionSidebar />);
+
+    expect(await screen.findByText("Claude CLI não encontrado")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Nova sessão" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Nenhuma sessão ainda")).not.toBeInTheDocument();
+  });
+
+  it("gsd-core ausente (claude presente): mostra a variante gsd-core e esconde o CTA", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "check_claude_on_path") {
+        return Promise.resolve({ claudePath: "/usr/local/bin/claude" });
+      }
+      return Promise.reject(new Error("register_sessions_scope indisponível neste teste"));
+    });
+    useBoardStore.setState({
+      project: { root: "/repo", hasGsdCore: false } as ReturnType<
+        typeof useBoardStore.getState
+      >["project"],
+    });
+
+    render(<SessionSidebar />);
+
+    expect(await screen.findByText("gsd-core não encontrado neste projeto")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Nova sessão" })).not.toBeInTheDocument();
+  });
+
+  it("ambos ausentes: mostra a variante both e esconde o CTA", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "check_claude_on_path") {
+        return Promise.resolve({ claudePath: null });
+      }
+      return Promise.reject(new Error("register_sessions_scope indisponível neste teste"));
+    });
+    useBoardStore.setState({
+      project: { root: "/repo", hasGsdCore: false } as ReturnType<
+        typeof useBoardStore.getState
+      >["project"],
+    });
+
+    render(<SessionSidebar />);
+
+    expect(
+      await screen.findByText("Claude CLI e gsd-core não encontrados"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Nova sessão" })).not.toBeInTheDocument();
   });
 });
