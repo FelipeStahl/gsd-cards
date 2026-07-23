@@ -33,7 +33,10 @@ win32job = "2.0.3"
 nix = { version = "0.31.3", features = ["signal"] }
 
 [dev-dependencies]
-sysinfo = "0.39.6"
+# 0.38.4 (não a 0.39.x mais recente): sysinfo 0.39.x exige rustc 1.95, e o
+# toolchain deste ambiente é 1.94.1 — 0.38.4 é a última série compatível
+# (rust-version 1.88), API de refresh_processes/Pid idêntica à usada aqui.
+sysinfo = "0.38.4"
 
 [[bin]]
 name = "tree_kill_helper"

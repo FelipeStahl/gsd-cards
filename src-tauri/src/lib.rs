@@ -1,5 +1,9 @@
 mod planning_watcher;
-mod process_guard;
+// `pub` (não `mod` privado) porque `tests/tree_kill.rs` — um crate externo
+// que depende de `gsd_cards_lib` como biblioteca — precisa exercitar
+// `TreeGuard::attach`/`kill_tree` diretamente (key_link do 02-02-PLAN.md);
+// itens não-`pub` de um módulo não-`pub` são invisíveis fora do crate.
+pub mod process_guard;
 mod project;
 mod pty;
 
