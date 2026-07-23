@@ -130,6 +130,12 @@ mod tests {
         assert!(is_contained(Path::new("/a/b"), Path::new("/a/b")));
     }
 
+    // Caminhos estilo Windows (drive + separador `\`) só têm semântica de
+    // componentes de path quando compilados no Windows — no Unix `\` não é
+    // separador, então `Path` enxerga um único componente e a asserção não
+    // reflete o comportamento real de `is_contained`. Restritos a
+    // `#[cfg(windows)]`; a matriz de CI cobre `windows-latest`.
+    #[cfg(windows)]
     #[test]
     fn windows_style_sibling_with_common_prefix_is_not_contained() {
         assert!(!is_contained(
@@ -138,6 +144,7 @@ mod tests {
         ));
     }
 
+    #[cfg(windows)]
     #[test]
     fn windows_style_nested_path_is_contained() {
         assert!(is_contained(
