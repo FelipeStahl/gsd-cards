@@ -63,3 +63,44 @@ npm run tauri dev
 ```
 
 Uma janela nativa do GSD Cards deve abrir.
+
+## Mantendo o parser alinhado com o gsd-core (`npm run fixtures:refresh`)
+
+O parser de `.planning/` (`src/planning/status.ts` e módulos relacionados)
+replica literalmente a regra de derivação de status que o próprio gsd-core
+usa — mas o gsd-core evolui na branch `next`, fora do controle deste
+projeto. Para pegar esse tipo de drift em code review em vez de em um bug
+report de usuário meses depois, o projeto usa o CLI local do gsd-core
+(`gsd-tools`, já instalado como dependência de desenvolvimento do fluxo GSD)
+como **oráculo de teste**: ele é a fonte que sabemos que está correta, e
+`src/planning/oracle-drift.test.ts` compara a saída do nosso parser TS contra
+um snapshot versionado dessa fonte.
+
+**Importante:** o `gsd-tools` é usado exclusivamente em desenvolvimento —
+`oracle-drift.test.ts` nunca o executa (só lê o snapshot já gerado) e o app
+GSD Cards distribuído **não** depende de Node nem do gsd-core instalados na
+máquina do usuário final para funcionar. Rodar o CLI oráculo é uma ação
+manual do desenvolvedor, nunca algo que acontece em CI ou em runtime do app.
+
+Depois de atualizar sua instalação local do gsd-core:
+
+```bash
+npm run fixtures:refresh
+```
+
+Isso regenera `src/planning/__fixtures__/oracle/gsd-tools-manager.json`
+executando `gsd-tools init manager --raw` contra este próprio repositório (ou
+outro projeto GSD, passando o caminho como argumento) e normalizando a saída
+(removendo timestamps absolutos, caminhos de máquina e sinais dependentes de
+mtime, que mudariam a cada execução sem indicar nenhuma mudança de formato
+real).
+
+Depois de rodar, inspecione o diff do snapshot (`git diff`):
+
+- **Sem diff:** o parser já está alinhado com o gsd-core instalado — nada a
+  fazer.
+- **Com diff:** o gsd-core mudou de formato. Atualize `src/planning/status.ts`
+  (e os demais parsers afetados) até que `npm run test` volte a passar antes
+  de commitar o novo snapshot junto com a correção do parser — nunca
+  commitar um snapshot atualizado sem também corrigir o parser que ele
+  expôs como desalinhado.
