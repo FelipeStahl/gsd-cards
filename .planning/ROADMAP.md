@@ -112,7 +112,25 @@ Plans:
   3. O app detecta o estado do terminal (ocioso/ocupado/aguardando permissão) e não injeta comandos enquanto o Claude está ocupado.
   4. Usuário aciona atalhos GSD (paleta/botões de comandos `/gsd-*`) no drawer junto ao terminal.
 
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Fatia-traçadora: card lê `diskStatus`, sanitiza `phase.id` e injeta o `/gsd-*` correto via `writeSession` (ACT-01/ACT-02)
+- [ ] 03-02-PLAN.md — Gate de legitimidade + install de `strip-ansi@7.2.0` (dependência do classificador)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 03-03-PLAN.md — Motor de detecção de estado: `activityHandlers` sempre-ligado, `classifyActivity` puro, campo `activity` transition-gated (ACT-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 03-04-PLAN.md — Matriz de injeção (`resolveInjection`), guard 3-estados no card, dot de atividade e ação no DetailPanel (ACT-01/ACT-02/ACT-03)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 03-05-PLAN.md — Toolbar de comandos GSD + paleta Cmd/Ctrl+K no drawer, sob o mesmo guard (ACT-04)
+
 **UI hint**: yes
 
 ### Phase 4: Casa persistente
@@ -156,6 +174,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Espelho fiel | 8/8 | In Progress|  |
 | 2. Sessão viva | 6/6 | In Progress|  |
-| 3. Board interativo | 0/TBD | Not started | - |
+| 3. Board interativo | 0/5 | Not started | - |
 | 4. Casa persistente | 0/TBD | Not started | - |
 | 5. Comunidade | 0/TBD | Not started | - |
