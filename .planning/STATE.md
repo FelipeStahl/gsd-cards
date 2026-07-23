@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: sess-o-viva
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-07-23T17:20:50.857Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-07-23T17:39:26.885Z"
 last_activity: 2026-07-23
 last_activity_desc: Phase 02 execution resumed (wave continue)
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 02 (sess-o-viva) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-07-23 — Phase 02 execution resumed (wave continue)
 
-Progress: [████████░░] 79%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [████████░░] 79%
 | Phase 01 P07 | 22min | 2 tasks | 4 files |
 | Phase 02 P02 | 7min | 2 tasks | 4 files |
 | Phase 02 P03 | 9min | 2 tasks | 11 files |
+| Phase 02 P04 | 16min | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Recent decisions affecting current work:
 - [Phase 02-03]: has_gsd_core modelado como diretório-local OR home OR which gsd-tools (sem doctor oficial do gsd-core), documentado em project.rs
 - [Phase 02-03]: hasGsdCore adicionado ao ValidatedProject de read.ts (fora do files_modified do plano) para check.ts ter acesso tipado ao campo já serializado pelo Rust
 - [Phase 02-03]: register_sessions_scope não exige que a subpasta codificada exista - allow_directory é só registro de ACL glob, sem I/O; degradação a [] fica inteiramente em discover.ts
+- [Phase ?]: SessionSidebar built in two layers across Task1/Task2 so Task1's isolated verify never imports a not-yet-created ToolMissingState module
+- [Phase ?]: hasGsdCore added as OPTIONAL on ProjectStateModel to avoid breaking pre-existing project:{...} test literals across the codebase
+- [Phase ?]: gsd-core-missing gate only applies when a project is open (defaults to present); claude-missing gates globally on first sidebar mount
 
 ### Pending Todos
 
@@ -124,6 +128,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-23T17:20:42.178Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-07-23T17:39:26.871Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None

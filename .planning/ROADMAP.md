@@ -77,7 +77,7 @@ Plans:
   4. Usuário busca texto no scrollback do terminal e encontra ocorrências anteriores.
   5. Usuário arquiva/exclui uma sessão e a árvore de processos é encerrada de forma limpa — nenhum processo zumbi permanece, inclusive ao fechar o app no Windows (tree-kill validado como critério de fundação).
 
-**Plans**: 3/6 plans executed
+**Plans**: 4/6 plans executed
 Plans:
 **Wave 1**
 
@@ -90,7 +90,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 02-04-PLAN.md — Sidebar de sessões (SESS-01) + tela tool-missing (PROJ-04)
+- [x] 02-04-PLAN.md — Sidebar de sessões (SESS-01) + tela tool-missing (PROJ-04)
 - [ ] 02-05-PLAN.md — Terminal: scrollback/copiar-colar/links clicáveis (TERM-02) + busca no scrollback (TERM-03)
 
 **Wave 4** *(blocked on Wave 3)*
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Espelho fiel | 8/8 | In Progress|  |
-| 2. Sessão viva | 3/6 | In Progress|  |
+| 2. Sessão viva | 4/6 | In Progress|  |
 | 3. Board interativo | 0/TBD | Not started | - |
 | 4. Casa persistente | 0/TBD | Not started | - |
 | 5. Comunidade | 0/TBD | Not started | - |
