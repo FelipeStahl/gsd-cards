@@ -3,6 +3,7 @@
 // para que planos paralelos não disputem este arquivo depois.
 
 import type { ParseIssue, ParseResult } from "./parse-result";
+import type { BoardBadge, BoardColumnId, DiskStatus } from "./status";
 
 /** Espelha literalmente o frontmatter `progress` de STATE.md — sem recálculo. */
 export interface ProjectProgress {
@@ -19,11 +20,29 @@ export interface PhaseBlocker {
   text: string;
 }
 
-/** Mínimo necessário nesta fase — o Plano 03 preenche o restante da árvore fase→planos→tarefas. */
+/**
+ * Uma fase do board, montada em `board-store.ts` a partir do merge entre
+ * `ROADMAP.md` (nome, requisitos) e a varredura real do diretório da fase
+ * (`phase-scan.ts` + `status.ts`, D-06: badge exato sempre visível).
+ */
 export interface PhaseModel {
+  /** Número zero-padded para exibição (ex.: `01`, `02.1`) — preserva o formato original, nunca recalculado. */
   id: string;
+  /** Valor numérico para ordenação (`2.1` para uma fase decimal inserida, D-07). */
   number: number;
   name: string;
+  diskStatus: DiskStatus;
+  badge: BoardBadge;
+  column: BoardColumnId;
+  planCount: number;
+  summaryCount: number;
+  requirementIds: string[];
+  /** D-07: fase decimal inserida — badge neutro "inserida", sem tratamento de urgência. */
+  isInserted: boolean;
+  /** Filtrado de `ProjectStateModel.blockers` pelas fases citadas no rótulo `[Phase N]`. */
+  blockers: PhaseBlocker[];
+  /** `ParseIssue`s coletadas na varredura desta fase — dirige o `parseWarning` do card (BOARD-05). */
+  issues: ParseIssue[];
 }
 
 /** Mínimo necessário nesta fase — o Plano 06 preenche o histórico completo de milestones. */

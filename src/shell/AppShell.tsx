@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { useBoardStore } from "../stores/board-store";
+import { Board } from "./Board";
 import { DrawerRail } from "./DrawerRail";
 import { Header } from "./Header";
 import { SidebarPlaceholder } from "./SidebarPlaceholder";
@@ -50,16 +51,7 @@ export function AppShell() {
           }}
         >
           {status === "open" ? (
-            <p
-              style={{
-                fontSize: "var(--font-size-body)",
-                lineHeight: "var(--line-height-body)",
-                color: "var(--color-foreground)",
-                opacity: 0.6,
-              }}
-            >
-              {t("board.comingSoon")}
-            </p>
+            <Board />
           ) : status === "error" ? (
             <ErrorState
               heading={

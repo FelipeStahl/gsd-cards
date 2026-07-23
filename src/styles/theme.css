@@ -60,3 +60,48 @@
     --color-foreground: #f4f4f5;
   }
 }
+
+/* Plano 03 — pontos de status/coluna (D-06, `class-variance-authority` só
+   escolhe a classe; a cor em si continua vindo dos tokens acima). 8px fixo,
+   exempt da escala de spacing por serem decorativos (## Spacing Scale). */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.status-dot--neutral {
+  background-color: color-mix(in srgb, var(--color-foreground) 40%, transparent);
+}
+.status-dot--accent {
+  background-color: var(--color-accent);
+}
+.status-dot--warning {
+  background-color: var(--color-warning);
+}
+.status-dot--success {
+  background-color: var(--color-success);
+}
+
+/* Plano 03 — card de fase (D-09): hover com borda de acento (sem sombra) e
+   highlight de atualização em tempo real ~1000ms (D-13), consumido a partir
+   do Plano 04 via a prop `highlighted`. */
+.phase-card {
+  border: 1px solid transparent;
+  transition: border-color 150ms ease-out;
+}
+.phase-card:hover {
+  border-color: var(--color-accent);
+}
+.phase-card--highlighted {
+  animation: phase-card-glow-fade 1000ms ease-out forwards;
+}
+@keyframes phase-card-glow-fade {
+  from {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}

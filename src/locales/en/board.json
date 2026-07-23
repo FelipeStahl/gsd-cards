@@ -1,0 +1,34 @@
+{
+  "column": {
+    "todo": "To do",
+    "preparing": "Preparing",
+    "executing": "Executing",
+    "done": "Done",
+    "empty": "No phases here yet"
+  },
+  "history": {
+    "empty": "No previous milestones",
+    "toggle": "Milestone history"
+  },
+  "detail": {
+    "viewArtifact": "View artifact"
+  },
+  "card": {
+    "parseError": {
+      "tooltip": "Could not parse this artifact"
+    },
+    "blocked": "blocked",
+    "inserted": "inserted",
+    "requirements": "{{count}} requirements",
+    "plans": "{{completed}}/{{total}}"
+  },
+  "status": {
+    "pending": "pending",
+    "discussed": "discussed",
+    "planned": "planned",
+    "executing": "executing",
+    "executed": "executed",
+    "verified": "verified",
+    "unknown": "unrecognized"
+  }
+}

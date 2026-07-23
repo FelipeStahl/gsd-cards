@@ -1,0 +1,34 @@
+{
+  "column": {
+    "todo": "A fazer",
+    "preparing": "Preparando",
+    "executing": "Em execução",
+    "done": "Concluída",
+    "empty": "Nenhuma fase aqui ainda"
+  },
+  "history": {
+    "empty": "Sem milestones anteriores",
+    "toggle": "Histórico de milestones"
+  },
+  "detail": {
+    "viewArtifact": "Ver artefato"
+  },
+  "card": {
+    "parseError": {
+      "tooltip": "Não foi possível interpretar este artefato"
+    },
+    "blocked": "bloqueada",
+    "inserted": "inserida",
+    "requirements": "{{count}} requisitos",
+    "plans": "{{completed}}/{{total}}"
+  },
+  "status": {
+    "pending": "pendente",
+    "discussed": "discutida",
+    "planned": "planejada",
+    "executing": "em execução",
+    "executed": "executada",
+    "verified": "verificada",
+    "unknown": "não reconhecida"
+  }
+}

@@ -6,9 +6,21 @@
 import { useTranslation } from "react-i18next";
 
 import { ProgressBar } from "../components/ProgressBar";
-import { useBoardStore } from "../stores/board-store";
+import { statusDotVariants, type StatusTone } from "../components/StatusBadge";
+import { selectColumnCounts, useBoardStore } from "../stores/board-store";
+import type { BoardColumnId } from "../planning/status";
 
 const PLACEHOLDER = "—";
+
+/** Tom do ponto de cada coluna no contador do header — espelha a primeira cor de status daquele grupo (D-05/D-12). */
+const COLUMN_TONE: Record<BoardColumnId, StatusTone> = {
+  todo: "neutral",
+  preparing: "accent",
+  executing: "warning",
+  done: "success",
+};
+
+const COLUMN_ORDER: BoardColumnId[] = ["todo", "preparing", "executing", "done"];
 
 export function Header() {
   const { t } = useTranslation("project");
@@ -32,6 +44,8 @@ export function Header() {
 
   const percentValue =
     project?.progress.kind === "ok" ? project.progress.value.percent : null;
+
+  const columnCounts = selectColumnCounts(project?.phases ?? []);
 
   return (
     <header
@@ -93,8 +107,30 @@ export function Header() {
 
       <ProgressBar percent={percentValue} widthPx={120} label={t("header.progress")} />
 
-      {/* Slot reservado para os contadores por coluna — preenchido no Plano 03 */}
-      <div style={{ flex: 1 }} data-slot="column-counters" />
+      <div style={{ flex: 1 }} />
+
+      <div
+        data-slot="column-counters"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--spacing-sm)",
+          fontSize: "var(--font-size-label)",
+          lineHeight: "var(--line-height-label)",
+          fontWeight: "var(--font-weight-label)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {COLUMN_ORDER.map((columnId) => (
+          <span
+            key={columnId}
+            style={{ display: "inline-flex", alignItems: "center", gap: "var(--spacing-xs)" }}
+          >
+            <span className={statusDotVariants({ tone: COLUMN_TONE[columnId] })} aria-hidden="true" />
+            {columnCounts[columnId]}
+          </span>
+        ))}
+      </div>
 
       {/* Slot reservado para o indicador de sincronização — preenchido no Plano 04 */}
       <div data-slot="sync-indicator" />
