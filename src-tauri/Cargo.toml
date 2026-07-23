@@ -31,3 +31,10 @@ win32job = "2.0.3"
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.31.3", features = ["signal"] }
+
+[dev-dependencies]
+sysinfo = "0.39.6"
+
+[[bin]]
+name = "tree_kill_helper"
+path = "src/bin/tree_kill_helper.rs"
