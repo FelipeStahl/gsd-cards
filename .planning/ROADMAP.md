@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. O board atualiza sozinho quando o `.planning/` muda no disco, sem refresh manual (file watching debounced, sem piscar durante rajadas de escrita do GSD).
   5. Diante de um artefato não parseável, o board exibe aviso/raw em vez de mentir silenciosamente, e o usuário abre a visualização renderizada de PLAN/SUMMARY/VERIFICATION a partir do card.
 
-**Plans**: 6/6 plans executed
+**Plans**: 8/8 plans executed
 Plans:
 **Wave 1**
 
@@ -55,6 +55,11 @@ Plans:
 - [x] 01-04-PLAN.md — Espelho vivo: watcher Rust debounced, reprocessamento incremental e indicador de sincronização
 - [x] 01-05-PLAN.md — Painel de detalhe hierárquico e modal de artefato com render GFM e modo raw
 - [x] 01-06-PLAN.md — Histórico de milestones e guarda de regressão contra evolução de formato do gsd-core
+
+**Wave 5** *(remediação dos gaps confirmados em 01-VERIFICATION.md — CR-01/CR-02/CR-03)*
+
+- [x] 01-07-PLAN.md — Correção do espelho em tempo real: badges de bloqueio obsoletos (CR-02) e cache de conteúdo de artefato nunca invalidado (CR-03), teste-primeiro
+- [x] 01-08-PLAN.md — Rede de segurança do CI Rust: `cargo test` em toda build para os testes de contenção de caminho de T-01-01 (CR-01)
 
 **UI hint**: yes
 
@@ -130,7 +135,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Espelho fiel | 6/6 | In Progress|  |
+| 1. Espelho fiel | 8/8 | In Progress|  |
 | 2. Sessão viva | 0/TBD | Not started | - |
 | 3. Board interativo | 0/TBD | Not started | - |
 | 4. Casa persistente | 0/TBD | Not started | - |
