@@ -244,3 +244,7 @@ None - no external service configuration required. Node/npm/Rust/MSVC toolchain 
 ---
 *Phase: 01-espelho-fiel*
 *Completed: 2026-07-22*
+
+## Self-Check: PASSED
+
+All 22 tracked deliverable files confirmed present on disk; all 4 commit hashes (`83bdb58`, `dbcccef`, `a045fe0`, `1500fd9`) confirmed present in `git log`.

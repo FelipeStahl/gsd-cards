@@ -36,11 +36,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. O board atualiza sozinho quando o `.planning/` muda no disco, sem refresh manual (file watching debounced, sem piscar durante rajadas de escrita do GSD).
   5. Diante de um artefato não parseável, o board exibe aviso/raw em vez de mentir silenciosamente, e o usuário abre a visualização renderizada de PLAN/SUMMARY/VERIFICATION a partir do card.
 
-**Plans**: 6 plans
+**Plans**: 1/6 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Fundação executável: toolchain Rust/MSVC, scaffold Tauri v2 + React + TS, tokens do UI-SPEC, i18n e CI multiplataforma
+- [x] 01-01-PLAN.md — Fundação executável: toolchain Rust/MSVC, scaffold Tauri v2 + React + TS, tokens do UI-SPEC, i18n e CI multiplataforma
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -130,7 +130,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Espelho fiel | 0/6 | Not started | - |
+| 1. Espelho fiel | 1/6 | In Progress|  |
 | 2. Sessão viva | 0/TBD | Not started | - |
 | 3. Board interativo | 0/TBD | Not started | - |
 | 4. Casa persistente | 0/TBD | Not started | - |

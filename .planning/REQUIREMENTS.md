@@ -10,7 +10,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Projetos (PROJ)
 
 - [ ] **PROJ-01**: Usuário vê lista de projetos recentes na página principal, ordenada por último acesso
-- [ ] **PROJ-02**: Usuário abre um diretório como projeto; o app valida a presença de `.planning/` antes de aceitá-lo como projeto GSD
+- [x] **PROJ-02**: Usuário abre um diretório como projeto; o app valida a presença de `.planning/` antes de aceitá-lo como projeto GSD
 - [ ] **PROJ-03**: Usuário cria um projeto GSD do zero apontando uma pasta vazia/nova; o app abre uma sessão e conduz o `/gsd-new-project`
 - [ ] **PROJ-04**: App detecta Claude CLI e gsd-core instalados; quando ausentes, mostra instrução clara de instalação (sem auto-instalar)
 - [ ] **PROJ-05**: Usuário alterna entre múltiplos projetos abertos sem fechar sessões de nenhum deles
@@ -93,7 +93,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PROJ-01 | Phase 4 | Pending |
-| PROJ-02 | Phase 1 | Pending |
+| PROJ-02 | Phase 1 | Complete |
 | PROJ-03 | Phase 4 | Pending |
 | PROJ-04 | Phase 2 | Pending |
 | PROJ-05 | Phase 4 | Pending |
@@ -123,11 +123,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DIST-03 | Phase 5 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 29 total
 - Mapped to phases: 29
 - Unmapped: 0 ✓ (100% coverage)
 
 **By Phase:**
+
 - Phase 1 (Espelho fiel): PROJ-02, BOARD-01, BOARD-02, BOARD-03, BOARD-04, BOARD-05, BOARD-06 (7)
 - Phase 2 (Sessão viva): PROJ-04, SESS-01, SESS-02, SESS-03, SESS-06, TERM-01, TERM-02, TERM-03 (8)
 - Phase 3 (Board interativo): ACT-01, ACT-02, ACT-03, ACT-04 (4)
