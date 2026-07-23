@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: sess-o-viva
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-07-23T17:10:43.859Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-07-23T17:20:50.857Z"
 last_activity: 2026-07-23
 last_activity_desc: Phase 02 execution resumed (wave continue)
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 14
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 02 (sess-o-viva) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-07-23 — Phase 02 execution resumed (wave continue)
 
-Progress: [███████░░░] 71%
+Progress: [████████░░] 79%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [███████░░░] 71%
 | Phase 01 P06 | 35min | 3 tasks | 16 files |
 | Phase 01 P07 | 22min | 2 tasks | 4 files |
 | Phase 02 P02 | 7min | 2 tasks | 4 files |
+| Phase 02 P03 | 9min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Recent decisions affecting current work:
 - [Phase 01-07]: CR-03 - fase dona de um artefato cacheado e derivada do penultimo segmento do caminho via parsePhaseDirName (reaproveitado de phase-scan.ts), sem parser novo
 - [Phase 02-02]: sysinfo pinado em 0.38.4 (não 0.39.x) porque o toolchain deste ambiente (rustc 1.94.1) não atende a MSRV 1.95 do 0.39
 - [Phase 02-02]: process_guard virou pub mod em lib.rs para o teste de integração externo em tests/tree_kill.rs poder exercitar TreeGuard diretamente
+- [Phase 02-03]: has_gsd_core modelado como diretório-local OR home OR which gsd-tools (sem doctor oficial do gsd-core), documentado em project.rs
+- [Phase 02-03]: hasGsdCore adicionado ao ValidatedProject de read.ts (fora do files_modified do plano) para check.ts ter acesso tipado ao campo já serializado pelo Rust
+- [Phase 02-03]: register_sessions_scope não exige que a subpasta codificada exista - allow_directory é só registro de ACL glob, sem I/O; degradação a [] fica inteiramente em discover.ts
 
 ### Pending Todos
 
@@ -120,6 +124,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-23T17:10:43.845Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-07-23T17:20:42.178Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None

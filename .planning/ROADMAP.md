@@ -77,7 +77,7 @@ Plans:
   4. Usuário busca texto no scrollback do terminal e encontra ocorrências anteriores.
   5. Usuário arquiva/exclui uma sessão e a árvore de processos é encerrada de forma limpa — nenhum processo zumbi permanece, inclusive ao fechar o app no Windows (tree-kill validado como critério de fundação).
 
-**Plans**: 2/6 plans executed
+**Plans**: 3/6 plans executed
 Plans:
 **Wave 1**
 
@@ -86,7 +86,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1)*
 
 - [x] 02-02-PLAN.md — SESS-06 fundação: teste de integração de tree-kill (spawn→neto→kill→zero PIDs)
-- [ ] 02-03-PLAN.md — Backend de sessões: detecção de Claude CLI/gsd-core (PROJ-04) + escopo estreito de descoberta (SESS-01)
+- [x] 02-03-PLAN.md — Backend de sessões: detecção de Claude CLI/gsd-core (PROJ-04) + escopo estreito de descoberta (SESS-01)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Espelho fiel | 8/8 | In Progress|  |
-| 2. Sessão viva | 2/6 | In Progress|  |
+| 2. Sessão viva | 3/6 | In Progress|  |
 | 3. Board interativo | 0/TBD | Not started | - |
 | 4. Casa persistente | 0/TBD | Not started | - |
 | 5. Comunidade | 0/TBD | Not started | - |

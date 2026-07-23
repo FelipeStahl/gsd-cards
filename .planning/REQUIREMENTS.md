@@ -12,13 +12,13 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **PROJ-01**: Usuário vê lista de projetos recentes na página principal, ordenada por último acesso
 - [x] **PROJ-02**: Usuário abre um diretório como projeto; o app valida a presença de `.planning/` antes de aceitá-lo como projeto GSD
 - [ ] **PROJ-03**: Usuário cria um projeto GSD do zero apontando uma pasta vazia/nova; o app abre uma sessão e conduz o `/gsd-new-project`
-- [ ] **PROJ-04**: App detecta Claude CLI e gsd-core instalados; quando ausentes, mostra instrução clara de instalação (sem auto-instalar)
+- [x] **PROJ-04**: App detecta Claude CLI e gsd-core instalados; quando ausentes, mostra instrução clara de instalação (sem auto-instalar)
 - [ ] **PROJ-05**: Usuário alterna entre múltiplos projetos abertos sem fechar sessões de nenhum deles
 - [ ] **PROJ-06**: Usuário vê saúde de cada projeto na lista (fase atual, % de progresso, bloqueios pendentes) derivada de STATE.md
 
 ### Sessões (SESS)
 
-- [ ] **SESS-01**: Usuário vê as sessões do Claude CLI do projeto selecionado na sidebar
+- [x] **SESS-01**: Usuário vê as sessões do Claude CLI do projeto selecionado na sidebar
 - [ ] **SESS-02**: Usuário cria nova sessão pela sidebar (spawn do `claude` no diretório do projeto)
 - [ ] **SESS-03**: Usuário navega entre sessões sem fechar nenhuma — terminais continuam vivos em background
 - [ ] **SESS-04**: Sessões persistem entre aberturas do app e são restauradas ao reabrir (snapshot do buffer + histórico via `claude --resume`, restauração lazy)
@@ -95,10 +95,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROJ-01 | Phase 4 | Pending |
 | PROJ-02 | Phase 1 | Complete |
 | PROJ-03 | Phase 4 | Pending |
-| PROJ-04 | Phase 2 | Pending |
+| PROJ-04 | Phase 2 | Complete |
 | PROJ-05 | Phase 4 | Pending |
 | PROJ-06 | Phase 4 | Pending |
-| SESS-01 | Phase 2 | Pending |
+| SESS-01 | Phase 2 | Complete |
 | SESS-02 | Phase 2 | Pending |
 | SESS-03 | Phase 2 | Pending |
 | SESS-04 | Phase 4 | Pending |
