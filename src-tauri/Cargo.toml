@@ -39,6 +39,12 @@ nix = { version = "0.31.3", features = ["signal"] }
 # (rust-version 1.88), API de refresh_processes/Pid idêntica à usada aqui.
 sysinfo = "0.38.4"
 
+# Só no teste tree_kill (Unix): `setsid` via pre_exec para tornar o filho
+# líder de process group, espelhando o que o portable-pty faz em produção,
+# para que o killpg do TreeGuard alcance os descendentes.
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"
+
 [[bin]]
 name = "tree_kill_helper"
 path = "src/bin/tree_kill_helper.rs"
