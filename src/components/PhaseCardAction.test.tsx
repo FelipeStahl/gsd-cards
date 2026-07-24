@@ -129,6 +129,24 @@ describe("PhaseCardAction — guard de atividade (ACT-03)", () => {
     });
   });
 
+  it("IN-02: prefill (alvo aguardando) devolve o foco à superfície do xterm, mesma disciplina de GsdCommandToolbar/CommandPalette", async () => {
+    withLiveActiveSession("session-a1", "awaiting");
+    writeSessionMock.mockResolvedValue(undefined);
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "xterm-helper-textarea";
+    document.body.appendChild(textarea);
+
+    render(<PhaseCardAction phase={makePhase()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Executar" }));
+
+    await waitFor(() => {
+      expect(textarea).toHaveFocus();
+    });
+
+    document.body.removeChild(textarea);
+  });
+
   it("alvo ocioso (activity=\"idle\" explícito): writeSession chamado com \\r, sem hint de prefill", () => {
     const sessionId = withLiveActiveSession("session-a1", "idle");
     writeSessionMock.mockResolvedValue(undefined);

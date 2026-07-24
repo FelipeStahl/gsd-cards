@@ -34,6 +34,7 @@ import { resolveInjection } from "../planning/injection";
 import { writeSession } from "../pty/channel";
 import { useSessionStore } from "../stores/session-store";
 import type { PhaseModel } from "../planning/model";
+import { focusTerminalSurface } from "./terminal/GsdCommandToolbar";
 
 const ICON_BY_NAME: Record<PhaseAction["icon"], LucideIcon> = {
   MessageSquare,
@@ -124,6 +125,11 @@ export function PhaseCardAction({ phase, variant = "card", style }: PhaseCardAct
     });
     if (isPrefill) {
       showTransientMessage("prefilled");
+      // IN-02: mesma disciplina de `GsdCommandToolbar.handleCommandClick`/
+      // `CommandPalette.activateEntry` — devolve o foco ao terminal depois
+      // de um prefill para que o usuário possa apertar Enter imediatamente,
+      // sem precisar clicar manualmente na superfície do xterm primeiro.
+      focusTerminalSurface();
     }
   }
 
