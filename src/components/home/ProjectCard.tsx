@@ -125,6 +125,13 @@ export function ProjectCard({ entry, onOpen, onRemoved }: ProjectCardProps) {
     setRetryToken((token) => token + 1);
   }
 
+  // IN-03 fix (04-REVIEW.md): computado uma vez e reusado abaixo (como o
+  // label acessível do `ProgressBar` e como o texto visível adjacente) —
+  // antes chamava `t("card.progress", ...)` duas vezes seguidas para o
+  // mesmo valor.
+  const progressLabel =
+    health.kind === "healthy" ? t("card.progress", { percent: health.percent ?? 0 }) : "";
+
   return (
     <div
       role={isClickable ? "button" : undefined}
@@ -202,11 +209,7 @@ export function ProjectCard({ entry, onOpen, onRemoved }: ProjectCardProps) {
             {health.phaseName}
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-sm)" }}>
-            <ProgressBar
-              percent={health.percent}
-              widthPx={120}
-              label={t("card.progress", { percent: health.percent ?? 0 })}
-            />
+            <ProgressBar percent={health.percent} widthPx={120} label={progressLabel} />
             <span
               style={{
                 fontSize: "var(--font-size-label)",
@@ -216,7 +219,7 @@ export function ProjectCard({ entry, onOpen, onRemoved }: ProjectCardProps) {
                 opacity: 0.75,
               }}
             >
-              {t("card.progress", { percent: health.percent ?? 0 })}
+              {progressLabel}
             </span>
           </div>
           {health.blockersCount > 0 ? (
