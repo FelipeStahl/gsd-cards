@@ -31,6 +31,14 @@ export function AppShell() {
     const selected = await open({ directory: true, multiple: false });
     if (typeof selected === "string") {
       await openProject(selected);
+      // CR-01 fix: este handler também é usado pelo CTA "Abrir pasta" da
+      // Home (`view === "home"` por default agora) — sem este `setView`,
+      // uma falha de `openProject` (pasta não é projeto GSD, IoError etc.)
+      // muda `status` para "error" mas o usuário permanece preso na Home,
+      // nunca vendo o `ErrorState` correspondente (que só renderiza dentro
+      // do ramo `view === "board"`). Mesma disciplina de `handleOpenRecent`
+      // abaixo: SEMPRE troca para "board" após a tentativa, sucesso ou não.
+      setView("board");
     }
   }
 

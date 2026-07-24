@@ -47,9 +47,13 @@ export type BoardStatus = "idle" | "opening" | "open" | "error";
 
 /** Qual tela o `AppShell` renderiza (04-01-PLAN.md Pattern 1) — nunca um
  * router: home é um ramo de renderização condicional, não uma rota. Default
- * `"board"` para que os fluxos single-project pré-existentes (Fases 1-3)
- * continuem exatamente como antes; `openProject` bem-sucedido garante
- * `"board"` explicitamente. */
+ * `"home"` (CR-01 fix, 04-REVIEW.md): PROJ-01's entire point is that the
+ * recents/home screen is the app's actual entry point on boot, not
+ * reachable only via a chevron click after the pre-Fase-4 board shell has
+ * already rendered. `openProject`/`switchProject`'s existing `state.view =
+ * "board"` assignments (already present before this fix) cover every
+ * subsequent successful open — this default only governs the very first
+ * paint, before any project has ever been opened this run. */
 export type BoardView = "home" | "board";
 
 export interface ProjectStoreError {
@@ -519,7 +523,7 @@ export const useBoardStore = create<BoardStoreState>()(
     error: null,
     recentlyUpdatedPhaseIds: [],
     sync: { state: "idle", lastSyncedAt: null, degradedSince: null, reason: null },
-    view: "board",
+    view: "home",
     openProjectRoots: [],
     activeProjectRoot: null,
 

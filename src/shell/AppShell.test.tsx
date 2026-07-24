@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { open } from "@tauri-apps/plugin-dialog";
 
 import { ok } from "../planning/parse-result";
 import { useBoardStore } from "../stores/board-store";
@@ -71,10 +72,65 @@ beforeEach(() => {
   });
   getRecentsMock.mockReset().mockResolvedValue([]);
   upsertRecentMock.mockReset().mockResolvedValue(undefined);
+  vi.mocked(open).mockReset().mockResolvedValue(null);
 });
 
 describe("AppShell", () => {
-  it("estado idle: mostra o heading de estado vazio e o botão do CTA 'Abrir projeto'", () => {
+  it("CR-01: boot fresco (sem projeto ativo) renderiza a Home automaticamente — nunca o EmptyState do board pré-Fase-4", async () => {
+    // Nenhum `useBoardStore.setState({ view: ... })` explícito aqui de
+    // propósito — este teste prova o DEFAULT de `board-store.ts` (view
+    // inicial "home"), não um estado forçado. `04-REVIEW.md` CR-01: antes
+    // desta correção, este mesmo cenário renderizava o `EmptyState` do
+    // board ("Nenhum projeto aberto"), nunca a Home/recentes.
+    render(<AppShell />);
+
+    await screen.findByText("Projetos recentes");
+    // Home substitui o shell inteiro — Header/SessionSidebar nunca montam
+    // enquanto view === "home".
+    expect(screen.queryByText("Sessões")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nenhum projeto aberto")).not.toBeInTheDocument();
+  });
+
+  it("CR-01: abrir uma pasta a partir da Home (CTA 'Abrir pasta') troca para a view board mesmo quando openProject falha", async () => {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    vi.mocked(open).mockResolvedValueOnce("/pasta-invalida");
+    // `invokeMock` (default deste arquivo) rejeita `validate_project_root`
+    // (nenhum `mockImplementation` cobre esse comando), então `openProject`
+    // termina em status "error" — o que este teste prova é que a VIEW ainda
+    // assim troca para "board" (onde o ErrorState realmente renderiza),
+    // nunca deixando o usuário preso na Home sem feedback algum.
+    render(<AppShell />);
+    await screen.findByText("Projetos recentes");
+
+    // Sem recentes, o CTA "Abrir pasta" aparece duas vezes (header + dentro
+    // do EmptyState inline) — qualquer um dos dois aciona o mesmo
+    // `onOpenFolder`/`handleOpenProject`, então o primeiro basta aqui.
+    fireEvent.click(screen.getAllByRole("button", { name: "Abrir pasta" })[0]);
+
+    await waitFor(() => {
+      expect(useBoardStore.getState().view).toBe("board");
+    });
+    await waitFor(() => {
+      expect(useBoardStore.getState().status).toBe("error");
+    });
+  });
+
+  it("monta a SessionSidebar real (Plano 04) no lugar do SidebarPlaceholder — mesmo slot 240px fixo", () => {
+    useBoardStore.setState({ view: "board" });
+
+    render(<AppShell />);
+
+    expect(screen.getByText("Sessões")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nova sessão" })).toBeInTheDocument();
+  });
+
+  it("estado idle (view board explícita): mostra o heading de estado vazio e o botão do CTA 'Abrir projeto'", () => {
+    // `view: "board"` explícito aqui — o comportamento "idle mostra
+    // EmptyState" continua existindo DENTRO da view board (ex.: usuário já
+    // navegou para o board e fecha o projeto ativo); só deixou de ser o
+    // default de boot, que é o que CR-01 corrigiu.
+    useBoardStore.setState({ view: "board" });
+
     render(<AppShell />);
 
     expect(screen.getByText("Nenhum projeto aberto")).toBeInTheDocument();
@@ -83,15 +139,9 @@ describe("AppShell", () => {
     ).toBeInTheDocument();
   });
 
-  it("monta a SessionSidebar real (Plano 04) no lugar do SidebarPlaceholder — mesmo slot 240px fixo", () => {
-    render(<AppShell />);
-
-    expect(screen.getByText("Sessões")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Nova sessão" })).toBeInTheDocument();
-  });
-
   it("estado error (pasta não é projeto GSD): mostra o heading de erro e não mostra o board", () => {
     useBoardStore.setState({
+      view: "board",
       status: "error",
       project: null,
       error: {
@@ -110,6 +160,7 @@ describe("AppShell", () => {
 
   it("estado open: mostra o nome do projeto, o rótulo de milestone e a barra de progresso com aria-valuenow igual ao percent", () => {
     useBoardStore.setState({
+      view: "board",
       status: "open",
       error: null,
       project: {
