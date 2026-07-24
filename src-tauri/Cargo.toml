@@ -1,5 +1,6 @@
 [package]
 name = "gsd-cards"
+default-run = "gsd-cards"
 version = "0.1.0"
 description = "GSD Cards — board kanban hierárquico que espelha o .planning/ do gsd-core em tempo real"
 authors = ["GSD Cards contributors"]
