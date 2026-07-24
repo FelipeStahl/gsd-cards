@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 04
-current_phase_name: casa-persistente
-status: verifying
+current_phase: 05
+current_phase_name: comunidade
+status: executing
 stopped_at: Completed 04-07-PLAN.md
-last_updated: "2026-07-24T06:28:02.601Z"
+last_updated: "2026-07-24T07:59:49.252Z"
 last_activity: 2026-07-24
-last_activity_desc: Phase 04 execution started
+last_activity_desc: Phase 05 execution started
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
-  total_plans: 26
+  total_plans: 30
   completed_plans: 26
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Abrir o app e ver fielmente, em tempo real, onde cada projeto GSD está — o board é um espelho confiável do `.planning/`.
-**Current focus:** Phase 04 — casa-persistente
+**Current focus:** Phase 05 — comunidade
 
 ## Current Position
 
-Phase: 04 (casa-persistente) — EXECUTING
-Plan: 7 of 7
-Status: Phase complete — ready for verification
-Last activity: 2026-07-24 — Phase 04 execution started
+Phase: 05 (comunidade) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 05
+Last activity: 2026-07-24 — Phase 05 execution started
 
 Progress: [██████████] 100%
 
