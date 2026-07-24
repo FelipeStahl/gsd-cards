@@ -3,7 +3,8 @@
     "newSession": "New session",
     "reexpand": "Reopen session",
     "archive": "Archive",
-    "delete": "Delete"
+    "delete": "Delete",
+    "rename": "Rename"
   },
   "sidebar": {
     "heading": "Sessions",
@@ -12,6 +13,11 @@
       "history": "History"
     },
     "scopeBanner": "Showing sessions from: {{projectName}}"
+  },
+  "rename": {
+    "placeholder": "Session name",
+    "confirm": "Confirm name",
+    "cancel": "Cancel"
   },
   "empty": {
     "heading": "No sessions yet",

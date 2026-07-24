@@ -35,6 +35,15 @@ vi.mock("../components/terminal/useTerminalActivity", () => ({
   wireTerminalActivity: (...args: unknown[]) => wireTerminalActivityMock(...args),
 }));
 
+// `renameSession` (SESS-05) persiste via `app-store.ts` — mockado no nível
+// do módulo (mesmo padrão de `AppShell.test.tsx`) para que estas
+// suítes de ciclo de vida de sessão nunca façam uma chamada real de
+// `LazyStore`/plugin Tauri.
+const setSessionNameMock = vi.fn();
+vi.mock("../persistence/app-store", () => ({
+  setSessionName: (...args: unknown[]) => setSessionNameMock(...args),
+}));
+
 const { useSessionStore, toSessionError } = await import("./session-store");
 const { useBoardStore } = await import("./board-store");
 
@@ -53,6 +62,7 @@ beforeEach(() => {
   wireTerminalActivityMock.mockReset();
   activityStopMock.mockReset();
   wireTerminalActivityMock.mockReturnValue(activityStopMock);
+  setSessionNameMock.mockReset().mockResolvedValue(undefined);
 });
 
 function openProjectAt(root: string) {
@@ -384,6 +394,49 @@ describe("setActivity (ACT-03 — transition-gated)", () => {
     expect(
       useSessionStore.getState().sessions.find((s) => s.id === "sessao-inexistente"),
     ).toBeUndefined();
+  });
+});
+
+describe("renameSession (SESS-05)", () => {
+  it("define o nome e persiste via app-store", async () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+
+    useSessionStore.getState().renameSession(id, "Meu terminal");
+
+    const session = useSessionStore.getState().sessions.find((s) => s.id === id);
+    expect(session?.name).toBe("Meu terminal");
+    expect(setSessionNameMock).toHaveBeenCalledWith(id, "Meu terminal");
+  });
+
+  it("nome vazio (após trim) limpa name de volta para undefined — label cai para o derivado", () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+    useSessionStore.getState().renameSession(id, "Meu terminal");
+
+    useSessionStore.getState().renameSession(id, "   ");
+
+    const session = useSessionStore.getState().sessions.find((s) => s.id === id);
+    expect(session?.name).toBeUndefined();
+    expect(setSessionNameMock).toHaveBeenLastCalledWith(id, "");
+  });
+
+  it("valor inalterado é um no-op (sessions[] mantém a mesma referência, sem persistir de novo)", () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+    useSessionStore.getState().renameSession(id, "Meu terminal");
+    setSessionNameMock.mockClear();
+    const sessionsAfterFirst = useSessionStore.getState().sessions;
+
+    useSessionStore.getState().renameSession(id, "Meu terminal");
+
+    expect(useSessionStore.getState().sessions).toBe(sessionsAfterFirst);
+    expect(setSessionNameMock).not.toHaveBeenCalled();
+  });
+
+  it("é um no-op seguro para um id de sessão desconhecido/ausente", () => {
+    expect(() => useSessionStore.getState().renameSession("sessao-inexistente", "x")).not.toThrow();
+    expect(setSessionNameMock).not.toHaveBeenCalled();
   });
 });
 

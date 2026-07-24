@@ -3,7 +3,8 @@
     "newSession": "Nova sessão",
     "reexpand": "Reabrir sessão",
     "archive": "Arquivar",
-    "delete": "Excluir"
+    "delete": "Excluir",
+    "rename": "Renomear"
   },
   "sidebar": {
     "heading": "Sessões",
@@ -12,6 +13,11 @@
       "history": "Histórico"
     },
     "scopeBanner": "Mostrando sessões de: {{projectName}}"
+  },
+  "rename": {
+    "placeholder": "Nome da sessão",
+    "confirm": "Confirmar nome",
+    "cancel": "Cancelar"
   },
   "empty": {
     "heading": "Nenhuma sessão ainda",

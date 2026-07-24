@@ -65,3 +65,29 @@ export async function removeRecent(root: string): Promise<void> {
   await appStore.set(RECENTS_KEY, next);
   await appStore.save();
 }
+
+const SESSION_NAMES_KEY = "sessionNames";
+
+/**
+ * Persiste (ou limpa) o nome customizado de uma sessão (SESS-05,
+ * 04-05-PLAN.md) — pequeno metadado id->nome, nunca o snapshot de
+ * scrollback (esse vive em arquivo próprio por sessão, ver o comentário de
+ * topo). `name === ""` remove a entrada (equivalente a "sem nome
+ * customizado" — o consumidor cai para o label derivado do id).
+ */
+export async function setSessionName(id: string, name: string): Promise<void> {
+  const names = (await appStore.get<Record<string, string>>(SESSION_NAMES_KEY)) ?? {};
+  const next = { ...names };
+  if (name.length > 0) {
+    next[id] = name;
+  } else {
+    delete next[id];
+  }
+  await appStore.set(SESSION_NAMES_KEY, next);
+  await appStore.save();
+}
+
+/** Lê o mapa id->nome persistido — `{}` quando nenhuma sessão foi renomeada ainda, nunca lança. */
+export async function getSessionNames(): Promise<Record<string, string>> {
+  return (await appStore.get<Record<string, string>>(SESSION_NAMES_KEY)) ?? {};
+}

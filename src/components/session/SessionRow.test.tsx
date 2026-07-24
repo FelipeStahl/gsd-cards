@@ -4,16 +4,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionDescriptor } from "../../stores/session-store";
 
 const archiveSessionMock = vi.fn();
+const renameSessionMock = vi.fn();
 
 vi.mock("../../stores/session-store", () => ({
-  useSessionStore: (selector: (state: { archiveSession: typeof archiveSessionMock }) => unknown) =>
-    selector({ archiveSession: archiveSessionMock }),
+  useSessionStore: (
+    selector: (state: {
+      archiveSession: typeof archiveSessionMock;
+      renameSession: typeof renameSessionMock;
+    }) => unknown,
+  ) => selector({ archiveSession: archiveSessionMock, renameSession: renameSessionMock }),
 }));
 
 const { SessionRow } = await import("./SessionRow");
 
 beforeEach(() => {
   archiveSessionMock.mockReset();
+  renameSessionMock.mockReset();
 });
 
 function makeSession(overrides: Partial<SessionDescriptor> = {}): SessionDescriptor {
@@ -99,6 +105,84 @@ describe("SessionRow — variante live", () => {
     fireEvent.click(screen.getByRole("button", { name: "Arquivar" }));
 
     expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+describe("SessionRow — renomear (SESS-05)", () => {
+  it("mostra o botão Renomear no hover, leftmost no grupo de ações", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    expect(screen.getByRole("button", { name: "Renomear" })).toBeInTheDocument();
+  });
+
+  it("clicar Renomear troca o label estático pelo controle inline-edit, sem chamar onSelect", () => {
+    const session = makeSession();
+    const onSelect = vi.fn();
+    render(<SessionRow session={session} variant="live" onSelect={onSelect} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Renomear" }));
+
+    expect(screen.getByPlaceholderText("Nome da sessão")).toBeInTheDocument();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("Enter confirma o rename — chama renameSession(id, valor) e volta ao label estático", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Renomear" }));
+    const input = screen.getByPlaceholderText("Nome da sessão");
+    fireEvent.change(input, { target: { value: "Meu terminal" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(renameSessionMock).toHaveBeenCalledWith(session.id, "Meu terminal");
+    expect(screen.queryByPlaceholderText("Nome da sessão")).not.toBeInTheDocument();
+  });
+
+  it("clicar Check confirma o rename da mesma forma que Enter", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Renomear" }));
+    const input = screen.getByPlaceholderText("Nome da sessão");
+    fireEvent.change(input, { target: { value: "Meu terminal" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar nome" }));
+
+    expect(renameSessionMock).toHaveBeenCalledWith(session.id, "Meu terminal");
+  });
+
+  it("Esc cancela sem chamar renameSession, volta ao label estático original", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Renomear" }));
+    const input = screen.getByPlaceholderText("Nome da sessão");
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    expect(renameSessionMock).not.toHaveBeenCalled();
+    expect(screen.queryByPlaceholderText("Nome da sessão")).not.toBeInTheDocument();
+    expect(screen.getByText(`Sessão ${session.id.slice(0, 8)}`)).toBeInTheDocument();
+  });
+
+  it("clicar X cancela da mesma forma que Esc", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Renomear" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(renameSessionMock).not.toHaveBeenCalled();
+    expect(screen.queryByPlaceholderText("Nome da sessão")).not.toBeInTheDocument();
+  });
+
+  it("sessão com nome customizado mostra o nome no lugar do label derivado, id permanece no title", () => {
+    const session = makeSession({ name: "Meu terminal" });
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    expect(screen.getByText("Meu terminal")).toBeInTheDocument();
+    expect(screen.queryByText(`Sessão ${session.id.slice(0, 8)}`)).not.toBeInTheDocument();
+    expect(container.querySelector(".session-row")).toHaveAttribute("title", session.id);
   });
 });
 

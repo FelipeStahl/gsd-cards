@@ -23,6 +23,7 @@ import { killSession as killSessionProcess, spawnSession, writeSession } from ".
 import type { TerminalActivity } from "../pty/activity";
 import { listSessions, type SessionSignal } from "../sessions/discover";
 import { useBoardStore } from "./board-store";
+import { setSessionName } from "../persistence/app-store";
 
 /**
  * Estado de foco/background por sessão (SESS-03) — `serializedSnapshot` +
@@ -170,6 +171,15 @@ interface SessionStoreState {
    * id não existir em `sessions[]` (sessão já encerrada/nunca registrada).
    */
   setActivity: (sessionId: string, activity: TerminalActivity) => void;
+  /**
+   * Renomeia uma sessão (SESS-05) — TRANSITION-GATED como `setActivity`: só
+   * chama `set()` quando o nome efetivamente muda, no-op para um id
+   * desconhecido. Nome vazio (após `trim()`) limpa `name` de volta para
+   * `undefined`, fazendo o label cair para o derivado `Sessão <id8>`.
+   * Persiste via `app-store.ts` (fire-and-forget, mesma disciplina de
+   * `upsertRecent` em `board-store.ts`) — a UI nunca espera o disco.
+   */
+  renameSession: (sessionId: string, name: string) => void;
 }
 
 /** Normaliza qualquer erro (tagged `{ kind, message }` vindo do Rust, ou um `Error`/valor desconhecido) para `SessionError`. Mesmo padrão de `toStoreError` em `board-store.ts`. */
@@ -391,6 +401,31 @@ export const useSessionStore = create<SessionStoreState>()(
       set((state) => {
         const descriptor = state.sessions.find((session) => session.id === sessionId);
         if (descriptor) descriptor.activity = activity;
+      });
+    },
+
+    renameSession: (sessionId: string, name: string) => {
+      const current = get().sessions.find((session) => session.id === sessionId);
+      if (!current) return;
+
+      const trimmed = name.trim();
+      const nextName = trimmed.length > 0 ? trimmed : undefined;
+      // No-op se o id não existir OU se o nome não mudou — mesma disciplina
+      // TRANSITION-GATED de `setActivity` acima.
+      if (current.name === nextName) return;
+
+      set((state) => {
+        const descriptor = state.sessions.find((session) => session.id === sessionId);
+        if (descriptor) descriptor.name = nextName;
+      });
+
+      // Fire-and-forget: a UI já refletiu o novo nome via `set()` acima, o
+      // disco nunca bloqueia a resposta visual (mesma disciplina de
+      // `upsertRecent` em `board-store.ts`). Falha ao persistir não reverte
+      // o nome já aplicado em memória.
+      void setSessionName(sessionId, nextName ?? "").catch(() => {
+        // Persistência é conveniência (sobrevive a reaberturas), nunca a
+        // fonte de verdade em memória desta execução.
       });
     },
   })),

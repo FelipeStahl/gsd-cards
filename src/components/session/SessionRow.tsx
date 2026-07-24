@@ -20,7 +20,7 @@
 // `historical` são inafetados.
 
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { Archive, Trash2 } from "lucide-react";
+import { Archive, Pencil, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, ptBR } from "date-fns/locale";
 import type { Locale } from "date-fns";
@@ -30,6 +30,7 @@ import { statusDotVariants, type StatusTone } from "../StatusBadge";
 import { ActivityDot } from "../ActivityDot";
 import { useSessionStore, type SessionDescriptor } from "../../stores/session-store";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { RenameSessionControl } from "./RenameSessionControl";
 
 const DATE_FNS_LOCALE: Record<string, Locale> = {
   "pt-BR": ptBR,
@@ -62,8 +63,10 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
   const { t, i18n } = useTranslation("session");
   const [showHistoricalHint, setShowHistoricalHint] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
   const hintTimeoutRef = useRef<number | undefined>(undefined);
   const archiveSession = useSessionStore((state) => state.archiveSession);
+  const renameSession = useSessionStore((state) => state.renameSession);
 
   useEffect(() => {
     return () => {
@@ -99,7 +102,26 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
   function handleCancelDelete() {
     setShowConfirmDelete(false);
   }
-  const label = `${t("row.labelPrefix")} ${session.id.slice(0, 8)}`;
+
+  function handleRenameClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    setIsRenaming(true);
+  }
+
+  function handleRenameConfirm(value: string) {
+    renameSession(session.id, value);
+    setIsRenaming(false);
+  }
+
+  function handleRenameCancel() {
+    setIsRenaming(false);
+  }
+
+  // Nome customizado (SESS-05) substitui o label derivado em todo lugar que
+  // o label aparece — o id continua disponível via `title` (fallback de
+  // desambiguação, nunca escondido, 04-UI-SPEC.md ## Rename Session passo 5).
+  const derivedLabel = `${t("row.labelPrefix")} ${session.id.slice(0, 8)}`;
+  const label = session.name ?? derivedLabel;
   const displayLabel = variant === "exited" ? `${label} ${t("row.exited")}` : label;
   const locale = DATE_FNS_LOCALE[i18n.language] ?? ptBR;
   const relativeTime =
@@ -173,36 +195,66 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
             aria-hidden="true"
           />
         )}
-        <span
-          style={{
-            fontFamily: "var(--font-family-mono)",
-            fontSize: "var(--font-size-label)",
-            lineHeight: "var(--line-height-label)",
-            fontWeight: "var(--font-weight-label)",
-            color: "var(--color-foreground)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            flex: 1,
-            minWidth: 0,
-          }}
-        >
-          {displayLabel}
-        </span>
-        <span
-          style={{
-            fontSize: "var(--font-size-label)",
-            lineHeight: "var(--line-height-label)",
-            fontWeight: "var(--font-weight-label)",
-            color: "var(--color-foreground)",
-            opacity: 0.7,
-            flexShrink: 0,
-          }}
-        >
-          {relativeTime}
-        </span>
-        {showLifecycleActions ? (
+        {isRenaming ? (
+          <RenameSessionControl
+            initialValue={session.name ?? ""}
+            onConfirm={handleRenameConfirm}
+            onCancel={handleRenameCancel}
+          />
+        ) : (
+          <span
+            style={{
+              fontFamily: "var(--font-family-mono)",
+              fontSize: "var(--font-size-label)",
+              lineHeight: "var(--line-height-label)",
+              fontWeight: "var(--font-weight-label)",
+              color: "var(--color-foreground)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {displayLabel}
+          </span>
+        )}
+        {!isRenaming ? (
+          <span
+            style={{
+              fontSize: "var(--font-size-label)",
+              lineHeight: "var(--line-height-label)",
+              fontWeight: "var(--font-weight-label)",
+              color: "var(--color-foreground)",
+              opacity: 0.7,
+              flexShrink: 0,
+            }}
+          >
+            {relativeTime}
+          </span>
+        ) : null}
+        {showLifecycleActions && !isRenaming ? (
           <span className="session-row__actions" style={{ display: "flex", flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={handleRenameClick}
+              aria-label={t("actions.rename")}
+              title={t("actions.rename")}
+              style={{
+                width: 32,
+                height: 32,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--color-foreground)",
+                flexShrink: 0,
+              }}
+            >
+              <Pencil size={16} aria-hidden="true" />
+            </button>
             <button
               type="button"
               onClick={handleArchiveClick}
