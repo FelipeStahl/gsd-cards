@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: casa-persistente
 status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-07-24T05:42:30.417Z"
+stopped_at: Completed 04-06-PLAN.md
+last_updated: "2026-07-24T06:06:21.238Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 26
-  completed_plans: 24
+  completed_plans: 25
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (casa-persistente) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-07-24 — Phase 04 execution started
 
-Progress: [█████████░] 92%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -80,6 +80,7 @@ Progress: [█████████░] 92%
 | Phase 04 P03 | 5min | 2 tasks | 7 files |
 | Phase 04 P04 | 15min | 3 tasks | 13 files |
 | Phase 04 P05 | 16min | 2 tasks | 17 files |
+| Phase 04 P06 | 32min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-04]: ProjectCard treats parseStateFile's overall 'unrecognized' result the same as a validateProjectRoot/read rejection — both degrade to the single non-clickable error card variant
 - [Phase ?]: [Phase 04-05]: RenameSessionControl reads renameSession from the store directly (sessionId prop + single onDone callback) instead of onConfirm/onCancel delegating through SessionRow — matches the plan's acceptance grep and keeps the store call co-located with the input
 - [Phase ?]: [Phase 04-05]: session name persistence (setSessionName/getSessionNames) added to app-store.ts under a sessionNames key — write-only this plan, rehydration on restore is 04-06's scope (SESS-04)
+- [Phase ?]: [Phase 04-06]: resumeSession validates isValidSessionId FIRST, before descriptor lookup — defense-in-depth flag-injection guard independent of lookup order
+- [Phase ?]: [Phase 04-06]: origin flip historical/restored->live happens AFTER spawnSession resolves so the row renders variant="starting" (pulse) while the resume is in flight
+- [Phase ?]: [Phase 04-06]: app-store.ts (upsertPersistedSession/getPersistedSessions) and SessionSidebar.tsx wiring added outside the plan's files_modified list (Rule 2) — required for loadPersistedSessions/resumeSession to be reachable end-to-end
 
 ### Pending Todos
 
@@ -178,6 +182,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T05:42:30.396Z
-Stopped at: Completed 04-05-PLAN.md
+Last session: 2026-07-24T06:06:21.216Z
+Stopped at: Completed 04-06-PLAN.md
 Resume file: None

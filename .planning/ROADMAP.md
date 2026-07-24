@@ -147,7 +147,7 @@ Plans:
   4. Ao reabrir o app, as sessões são restauradas (snapshot do buffer + histórico via `claude --resume`, restauração lazy), comunicando visualmente que é histórico restaurado, não processo contínuo.
   5. Usuário renomeia sessões e é notificado (alerta do SO + badge na sidebar) quando uma sessão termina ou precisa de input.
 
-**Plans**: 5/7 plans executed
+**Plans**: 6/7 plans executed
 Plans:
 **Wave 1**
 
@@ -165,7 +165,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 04-06-PLAN.md — Persistência + restauração lazy de sessão + guard de flag-injection `isValidSessionId` (SESS-04)
+- [x] 04-06-PLAN.md — Persistência + restauração lazy de sessão + guard de flag-injection `isValidSessionId` (SESS-04)
 
 **Wave 5** *(blocked on Wave 4)*
 
@@ -198,5 +198,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Espelho fiel | 8/8 | In Progress|  |
 | 2. Sessão viva | 6/6 | In Progress|  |
 | 3. Board interativo | 5/5 | In Progress|  |
-| 4. Casa persistente | 5/7 | In Progress|  |
+| 4. Casa persistente | 6/7 | In Progress|  |
 | 5. Comunidade | 0/TBD | Not started | - |
