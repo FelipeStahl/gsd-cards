@@ -147,7 +147,30 @@ Plans:
   4. Ao reabrir o app, as sessões são restauradas (snapshot do buffer + histórico via `claude --resume`, restauração lazy), comunicando visualmente que é histórico restaurado, não processo contínuo.
   5. Usuário renomeia sessões e é notificado (alerta do SO + badge na sidebar) quando uma sessão termina ou precisa de input.
 
-**Plans**: TBD
+**Plans**: 7 plans
+Plans:
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Fatia-traçadora: install dos plugins (gate de legitimidade) + fundação de persistência (app-state.json) end-to-end
+- [ ] 04-02-PLAN.md — Backend PTY: passthrough de `--resume` + evento `pty:session-exited` + `PtyManager::remove_exited`
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 04-03-PLAN.md — Multi-projeto: `switchProject` (watcher único re-sincronizado) + botão Home no Header (PROJ-05)
+- [ ] 04-04-PLAN.md — Home: grid de recentes + saúde por card + criar projeto do zero (PROJ-01/PROJ-06/PROJ-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 04-05-PLAN.md — Escopo de sessão por projeto + renomear sessão (PROJ-05/SESS-05)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 04-06-PLAN.md — Persistência + restauração lazy de sessão + guard de flag-injection `isValidSessionId` (SESS-04)
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 04-07-PLAN.md — Notificações do SO + badge + fiação do evento de saída (TERM-04)
+
 **UI hint**: yes
 
 ### Phase 5: Comunidade
@@ -175,5 +198,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Espelho fiel | 8/8 | In Progress|  |
 | 2. Sessão viva | 6/6 | In Progress|  |
 | 3. Board interativo | 5/5 | In Progress|  |
-| 4. Casa persistente | 0/TBD | Not started | - |
+| 4. Casa persistente | 0/7 | Not started | - |
 | 5. Comunidade | 0/TBD | Not started | - |
