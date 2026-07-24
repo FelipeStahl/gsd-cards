@@ -142,4 +142,34 @@ describe("DrawerRail — GSD command toolbar (ACT-04)", () => {
     fireEvent.click(button);
     expect(writeSessionMock).not.toHaveBeenCalled();
   });
+
+  it("Ctrl+K abre a paleta de comandos (listener window-level, sem precisar do xterm focado)", () => {
+    openProjectAt("/repo");
+    useSessionStore.setState({
+      activeSessionId: "s1",
+      lastFocusedSessionId: "s1",
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "idle" }],
+    });
+
+    render(<DrawerRail />);
+    expect(screen.queryByPlaceholderText("Buscar comando…")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+
+    expect(screen.getByPlaceholderText("Buscar comando…")).toBeInTheDocument();
+  });
+
+  it("o botão \"Comandos\" também abre a paleta", () => {
+    openProjectAt("/repo");
+    useSessionStore.setState({
+      activeSessionId: "s1",
+      lastFocusedSessionId: "s1",
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "idle" }],
+    });
+
+    render(<DrawerRail />);
+    fireEvent.click(screen.getByRole("button", { name: "Comandos" }));
+
+    expect(screen.getByPlaceholderText("Buscar comando…")).toBeInTheDocument();
+  });
 });
