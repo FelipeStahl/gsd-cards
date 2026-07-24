@@ -1,13 +1,15 @@
-// Botão de ação contextual de fase (ACT-01/ACT-02) — a única superfície de
-// injeção deste plano. Consome `derivePhaseAction`/`sanitizePhaseId`
-// (`../planning/actions`) e escreve no terminal via `writeSession`
-// (`../pty/channel`). Reaproveitado por `PhaseCard` (Row 2, este plano) e,
-// futuramente, `DetailPanel` (variant="detail") — daí o componente
-// compartilhado em vez de duplicar a lógica de três estados em cada card.
+// Botão de ação contextual de fase (ACT-01/ACT-02/ACT-03) — a superfície de
+// injeção reaproveitada por `PhaseCard` (Row 2) e `DetailPanel`
+// (variant="detail"). Consome `derivePhaseAction`/`sanitizePhaseId`
+// (`../planning/actions`) + `resolveInjection` (`../planning/injection`,
+// Plano 04) para decidir enviar/pré-preencher/bloquear/desabilitar, e escreve
+// no terminal via `writeSession` (`../pty/channel`).
 //
 // Alvo de injeção: `activeSessionId ?? lastFocusedSessionId`, filtrado a uma
 // sessão com `origin === "live"` (`session-store.ts:67-95`) — uma sessão
-// histórica nunca tem processo real para escrever.
+// histórica nunca tem processo real para escrever. A atividade desse alvo
+// (`SessionDescriptor.activity`, Plano 03 — `undefined` até a primeira
+// classificação) é o que `resolveInjection` usa para decidir o modo.
 //
 // T-03-01: um `phase.id` que falha `sanitizePhaseId` nunca produz um botão —
 // mesmo tratamento do status `complete` (`derivePhaseAction` retorna null).
@@ -19,14 +21,16 @@
 // `showHistoricalHint`/`HISTORICAL_HINT_TIMEOUT_MS` de `SessionRow.tsx`), e o
 // botão volta ao estado habilitado normal — nunca fica travado desabilitado.
 //
-// Este plano trata qualquer sessão live encontrada como ociosa (o guard de
-// ocupado/aguardando permissão chega no Plano 04, via activity state).
+// T-03-03: `resolveInjection` retorna `blocked`/`payload:null` para
+// atividade `busy` — o botão fica desabilitado e o clique NUNCA chama
+// `writeSession` (bloquear, nunca enfileirar).
 
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { CheckCircle2, ClipboardList, FastForward, MessageSquare, Play, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { derivePhaseAction, sanitizePhaseId, type PhaseAction } from "../planning/actions";
+import { resolveInjection } from "../planning/injection";
 import { writeSession } from "../pty/channel";
 import { useSessionStore } from "../stores/session-store";
 import type { PhaseModel } from "../planning/model";
@@ -43,12 +47,13 @@ const ICON_BY_NAME: Record<PhaseAction["icon"], LucideIcon> = {
 const TRANSIENT_MESSAGE_TIMEOUT_MS = 2500;
 
 /**
- * `PhaseAction.labelKey` carrega o prefixo `board.` por documentação (mesma
- * grafia da coluna "i18n key" de `03-UI-SPEC.md` ## Copywriting Contract) —
- * mas `useTranslation("board")` já escopa a busca ao namespace `board`, cujo
- * JSON não tem um nível `board` aninhado por dentro de si mesmo (mesmo
- * padrão de `StatusBadge.tsx`'s `t(\`status.\${status}\`)`, sem prefixo).
- * Remove o prefixo redundante antes de repassar a `t()`.
+ * `PhaseAction.labelKey`/`InjectionResolution.guardKey` carregam o prefixo
+ * `board.` por documentação (mesma grafia da coluna "i18n key" de
+ * `03-UI-SPEC.md` ## Copywriting Contract) — mas `useTranslation("board")` já
+ * escopa a busca ao namespace `board`, cujo JSON não tem um nível `board`
+ * aninhado por dentro de si mesmo (mesmo padrão de `StatusBadge.tsx`'s
+ * `t(\`status.\${status}\`)`, sem prefixo). Remove o prefixo redundante antes
+ * de repassar a `t()`.
  */
 function stripNamespacePrefix(key: string): string {
   return key.startsWith("board.") ? key.slice("board.".length) : key;
@@ -56,15 +61,15 @@ function stripNamespacePrefix(key: string): string {
 
 interface PhaseCardActionProps {
   phase: PhaseModel;
-  /** `card` (Row 2 do `PhaseCard`, 24px) vs `detail` (`DetailPanel`, 32px — consumido a partir de um plano futuro). */
+  /** `card` (Row 2 do `PhaseCard`, 24px) vs `detail` (`DetailPanel`, 32px). */
   variant?: "card" | "detail";
   style?: CSSProperties;
 }
 
 export function PhaseCardAction({ phase, variant = "card", style }: PhaseCardActionProps) {
   const { t } = useTranslation("board");
-  const [showError, setShowError] = useState(false);
-  const errorTimeoutRef = useRef<number | undefined>(undefined);
+  const [transientMessage, setTransientMessage] = useState<"prefilled" | "error" | null>(null);
+  const messageTimeoutRef = useRef<number | undefined>(undefined);
 
   const activeSessionId = useSessionStore((state) => state.activeSessionId);
   const lastFocusedSessionId = useSessionStore((state) => state.lastFocusedSessionId);
@@ -72,8 +77,8 @@ export function PhaseCardAction({ phase, variant = "card", style }: PhaseCardAct
 
   useEffect(() => {
     return () => {
-      if (errorTimeoutRef.current !== undefined) {
-        window.clearTimeout(errorTimeoutRef.current);
+      if (messageTimeoutRef.current !== undefined) {
+        window.clearTimeout(messageTimeoutRef.current);
       }
     };
   }, []);
@@ -88,21 +93,38 @@ export function PhaseCardAction({ phase, variant = "card", style }: PhaseCardAct
 
   const targetSessionId = activeSessionId ?? lastFocusedSessionId;
   const target = sessions.find((session) => session.id === targetSessionId && session.origin === "live");
-  const hasTarget = Boolean(target);
+  const hasLiveTarget = Boolean(target);
+
+  const resolution = resolveInjection({
+    command: action.command(sanitizedId),
+    kind: "phase",
+    activity: target?.activity,
+    hasLiveTarget,
+  });
 
   const Icon = ICON_BY_NAME[action.icon];
   const isDetail = variant === "detail";
+  const isSend = resolution.mode === "send";
+  const isPrefill = resolution.mode === "prefill";
+  const isDisabled = resolution.mode === "blocked" || resolution.mode === "unavailable";
+
+  function showTransientMessage(kind: "prefilled" | "error") {
+    setTransientMessage(kind);
+    if (messageTimeoutRef.current !== undefined) {
+      window.clearTimeout(messageTimeoutRef.current);
+    }
+    messageTimeoutRef.current = window.setTimeout(() => setTransientMessage(null), TRANSIENT_MESSAGE_TIMEOUT_MS);
+  }
 
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
-    if (!target || !action || !sanitizedId) return;
-    void writeSession(target.id, action.command(sanitizedId) + "\r").catch(() => {
-      setShowError(true);
-      if (errorTimeoutRef.current !== undefined) {
-        window.clearTimeout(errorTimeoutRef.current);
-      }
-      errorTimeoutRef.current = window.setTimeout(() => setShowError(false), TRANSIENT_MESSAGE_TIMEOUT_MS);
+    if (!target || isDisabled || resolution.payload === null) return;
+    void writeSession(target.id, resolution.payload).catch(() => {
+      showTransientMessage("error");
     });
+    if (isPrefill) {
+      showTransientMessage("prefilled");
+    }
   }
 
   const baseStyle: CSSProperties = isDetail
@@ -130,34 +152,39 @@ export function PhaseCardAction({ phase, variant = "card", style }: PhaseCardAct
       <button
         type="button"
         onClick={handleClick}
-        disabled={!hasTarget}
-        title={hasTarget ? undefined : t("actions.guard.noSession")}
+        disabled={isDisabled}
+        title={isDisabled && resolution.guardKey ? t(stripNamespacePrefix(resolution.guardKey)) : undefined}
         style={{
           ...baseStyle,
           display: "inline-flex",
           alignItems: "center",
-          border: hasTarget ? "none" : "1px solid var(--color-secondary)",
-          backgroundColor: hasTarget ? "var(--color-accent)" : "transparent",
-          color: hasTarget ? "#ffffff" : "var(--color-foreground)",
-          opacity: hasTarget ? 1 : 0.4,
-          cursor: hasTarget ? "pointer" : "not-allowed",
+          border: isPrefill
+            ? "1px solid var(--color-accent)"
+            : isDisabled
+              ? "1px solid var(--color-secondary)"
+              : "none",
+          backgroundColor: isSend ? "var(--color-accent)" : "transparent",
+          color: isSend ? "#ffffff" : isPrefill ? "var(--color-accent)" : "var(--color-foreground)",
+          opacity: isDisabled ? 0.4 : 1,
+          cursor: isDisabled ? "not-allowed" : "pointer",
           flexShrink: 0,
         }}
       >
         <Icon size={isDetail ? 16 : 14} aria-hidden="true" />
         {t(stripNamespacePrefix(action.labelKey))}
       </button>
-      {showError ? (
+      {transientMessage ? (
         <span
           role="status"
           style={{
             fontSize: "var(--font-size-label)",
             lineHeight: "var(--line-height-label)",
-            color: "var(--color-warning)",
+            color: transientMessage === "error" ? "var(--color-warning)" : "var(--color-foreground)",
+            opacity: transientMessage === "prefilled" ? 0.75 : 1,
             marginTop: "var(--spacing-xs)",
           }}
         >
-          {t("actions.error.injectFailed")}
+          {transientMessage === "error" ? t("actions.error.injectFailed") : t("actions.guard.prefilled")}
         </span>
       ) : null}
     </span>

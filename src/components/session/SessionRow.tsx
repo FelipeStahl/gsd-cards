@@ -12,6 +12,12 @@
 // Affordances). Nenhuma das duas toca o `.jsonl` de histórico do Claude
 // Code (Pitfall 5 de `02-RESEARCH.md`) — a cópia do `ConfirmDialog` deixa
 // isso explícito ao usuário.
+//
+// Fase 3, Plano 04 (ACT-03): o dot da row `variant === "live"` fica
+// dinâmico via `ActivityDot` quando `session.activity` já foi observado
+// nesta execução — substitui o `success` estático herdado da Fase 2
+// (`03-UI-SPEC.md` ## Color "Supersedes note"). `starting`/`exited`/
+// `historical` são inafetados.
 
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { Archive, Trash2 } from "lucide-react";
@@ -21,6 +27,7 @@ import type { Locale } from "date-fns";
 import { useTranslation } from "react-i18next";
 
 import { statusDotVariants, type StatusTone } from "../StatusBadge";
+import { ActivityDot } from "../ActivityDot";
 import { useSessionStore, type SessionDescriptor } from "../../stores/session-store";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -148,15 +155,24 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
           cursor: isHistorical ? "default" : "pointer",
         }}
       >
-        <span
-          className={[
-            statusDotVariants({ tone: TONE_BY_VARIANT[variant] }),
-            isHistorical ? "status-dot--outline" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-hidden="true"
-        />
+        {variant === "live" && session.activity ? (
+          // Plano 04 (Fase 3, ACT-03) — dot da row `live` fica dinâmico
+          // quando a atividade já foi observada nesta execução, substituindo
+          // o `success` estático da Fase 2 (`03-UI-SPEC.md` ## Color
+          // "Supersedes note"). `starting`/`exited`/`historical` são
+          // inafetados — só `live` consome `ActivityDot`.
+          <ActivityDot activity={session.activity} />
+        ) : (
+          <span
+            className={[
+              statusDotVariants({ tone: TONE_BY_VARIANT[variant] }),
+              isHistorical ? "status-dot--outline" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-hidden="true"
+          />
+        )}
         <span
           style={{
             fontFamily: "var(--font-family-mono)",

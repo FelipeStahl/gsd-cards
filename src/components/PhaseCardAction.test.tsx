@@ -36,11 +36,11 @@ beforeEach(() => {
   writeSessionMock.mockReset();
 });
 
-function withLiveActiveSession(sessionId = "session-a1") {
+function withLiveActiveSession(sessionId = "session-a1", activity?: "idle" | "busy" | "awaiting") {
   useSessionStore.setState((state) => {
     state.activeSessionId = sessionId;
     state.lastFocusedSessionId = sessionId;
-    state.sessions = [{ id: sessionId, lastModified: new Date(), origin: "live" }];
+    state.sessions = [{ id: sessionId, lastModified: new Date(), origin: "live", activity }];
   });
   return sessionId;
 }
@@ -94,5 +94,51 @@ describe("PhaseCardAction — injeção fim-a-fim (ACT-01/ACT-02)", () => {
     });
     // Nunca fica travado desabilitado após o erro — continua clicável.
     expect(button).not.toBeDisabled();
+  });
+});
+
+describe("PhaseCardAction — guard de atividade (ACT-03)", () => {
+  it("alvo busy: clique NÃO chama writeSession, botão desabilitado com o title guard.busy", () => {
+    withLiveActiveSession("session-a1", "busy");
+
+    render(<PhaseCardAction phase={makePhase()} />);
+    const button = screen.getByRole("button", { name: "Executar" });
+
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("title", "Claude está ocupado — aguarde");
+
+    fireEvent.click(button);
+    expect(writeSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("alvo aguardando permissão: writeSession chamado SEM \\r + mostra o hint guard.prefilled", async () => {
+    const sessionId = withLiveActiveSession("session-a1", "awaiting");
+    writeSessionMock.mockResolvedValue(undefined);
+
+    render(<PhaseCardAction phase={makePhase()} />);
+    const button = screen.getByRole("button", { name: "Executar" });
+    expect(button).not.toBeDisabled();
+
+    fireEvent.click(button);
+
+    expect(writeSessionMock).toHaveBeenCalledTimes(1);
+    expect(writeSessionMock).toHaveBeenCalledWith(sessionId, "/gsd-execute-phase 03");
+
+    await waitFor(() => {
+      expect(screen.getByText("Comando preenchido — pressione Enter no terminal para confirmar")).toBeInTheDocument();
+    });
+  });
+
+  it("alvo ocioso (activity=\"idle\" explícito): writeSession chamado com \\r, sem hint de prefill", () => {
+    const sessionId = withLiveActiveSession("session-a1", "idle");
+    writeSessionMock.mockResolvedValue(undefined);
+
+    render(<PhaseCardAction phase={makePhase()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Executar" }));
+
+    expect(writeSessionMock).toHaveBeenCalledWith(sessionId, "/gsd-execute-phase 03\r");
+    expect(
+      screen.queryByText("Comando preenchido — pressione Enter no terminal para confirmar"),
+    ).not.toBeInTheDocument();
   });
 });

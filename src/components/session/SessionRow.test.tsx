@@ -101,6 +101,54 @@ describe("SessionRow — variante live", () => {
   });
 });
 
+describe("SessionRow — dot ativo por atividade (ACT-03)", () => {
+  it("live + busy: dot vira warning + pulse (ActivityDot)", () => {
+    const session = makeSession({ activity: "busy" });
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    const dot = container.querySelector(".status-dot");
+    expect(dot).toHaveClass("status-dot--warning");
+    expect(dot).toHaveClass("status-dot--pulse");
+  });
+
+  it("live + awaiting: dot vira accent + pulse", () => {
+    const session = makeSession({ activity: "awaiting" });
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    const dot = container.querySelector(".status-dot");
+    expect(dot).toHaveClass("status-dot--accent");
+    expect(dot).toHaveClass("status-dot--pulse");
+  });
+
+  it("live + idle: dot vira success, sem pulse", () => {
+    const session = makeSession({ activity: "idle" });
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    const dot = container.querySelector(".status-dot");
+    expect(dot).toHaveClass("status-dot--success");
+    expect(dot).not.toHaveClass("status-dot--pulse");
+  });
+
+  it("live + activity undefined: mantém o fallback estático success (Fase 2)", () => {
+    const session = makeSession();
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    const dot = container.querySelector(".status-dot");
+    expect(dot).toHaveClass("status-dot--success");
+    expect(dot).not.toHaveClass("status-dot--pulse");
+  });
+
+  it("historical não é afetado por activity (ignora o campo mesmo se presente)", () => {
+    const session = makeSession({ origin: "historical", activity: "busy" });
+    const { container } = render(<SessionRow session={session} variant="historical" />);
+
+    const dot = container.querySelector(".status-dot");
+    expect(dot).toHaveClass("status-dot--neutral");
+    expect(dot).toHaveClass("status-dot--outline");
+    expect(dot).not.toHaveClass("status-dot--pulse");
+  });
+});
+
 describe("SessionRow — variante historical", () => {
   it("clique numa row histórica NÃO chama onSelect e mostra o tooltip session.row.historicalTooltip", () => {
     const session = makeSession({ origin: "historical" });
