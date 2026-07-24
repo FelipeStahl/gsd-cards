@@ -530,7 +530,9 @@ export async function resumeSession(sessionId: string, projectRoot: string): Pro
 
 **If this table is empty:** N/A — see entries above.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All three resolved during planning: Q1 → board-store extended (04-03); Q2 → `origin:"restored"` added (04-06); Q3 → granular `store:allow-*` permissions (04-01).
 
 1. **Should `openProjects`/home-derived state live in `board-store.ts` or a new `home-store.ts`?**
    - What we know: `board-store.ts` already owns `project`/`status`/`openProject`/`closeProject`; adding `openProjectRoots[]` + `activeProjectRoot` there is the smallest diff, but the file is already large (500+ lines) and mixes board-derivation concerns with persistence concerns.
