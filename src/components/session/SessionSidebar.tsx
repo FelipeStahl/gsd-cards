@@ -10,6 +10,16 @@
 // open/reopen) estão ausentes, o `ToolMissingState` substitui TODO o corpo
 // abaixo do heading — e o botão "Nova sessão" nem é renderizado (Pitfall 6:
 // nunca deixar o usuário descobrir a ausência só depois de tentar criar).
+//
+// Fase 4, Plano 06 (SESS-04): junto com `discoverSessions`, carrega os
+// metadados de sessão PERSISTIDOS (`loadPersistedSessions`, escopados por
+// `projectRoot`) — mesmo grupo visual "Histórico" que `origin:"historical"`
+// (04-UI-SPEC.md ## Color: "restored" reusa a variante `historical`, nunca
+// uma variante nova). O clique nesse grupo agora chama `resumeSession`
+// (T-04-16 guard + snapshot rehidratado + `claude --resume`), substituindo
+// o placeholder de hint da Fase 2 — a row em retomada (`activeSessionId`
+// igual ao seu id, `origin` ainda não promovido para `live`) renderiza
+// `variant="starting"` (mesmo pulse de uma sessão nova).
 
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
@@ -17,6 +27,7 @@ import { useTranslation } from "react-i18next";
 
 import { EmptyState } from "../EmptyState";
 import { SessionRow } from "./SessionRow";
+import { SidebarScopeBanner } from "./SidebarScopeBanner";
 import { ToolMissingState } from "./ToolMissingState";
 import { checkClaudeOnPath, deriveToolMissingState } from "../../dependencies/check";
 import { useBoardStore } from "../../stores/board-store";
@@ -42,15 +53,30 @@ const GROUP_LABEL_STYLE = {
 export function SessionSidebar() {
   const { t } = useTranslation("session");
   const projectRoot = useBoardStore((state) => state.project?.root ?? null);
+  const projectName = useBoardStore((state) => state.project?.projectName ?? null);
   // Ausência de projeto aberto nunca deve, por si só, disparar o
   // ToolMissingState de gsd-core (esse é um sinal por-projeto) — default
   // "presente" até um projeto real ser validado.
   const hasGsdCore = useBoardStore((state) => state.project?.hasGsdCore ?? true);
-  const sessions = useSessionStore((state) => state.sessions);
+  // PROJ-05 (04-05-PLAN.md, corrige 04-RESEARCH.md Pitfall 1): a sidebar
+  // filtra por `activeProjectRoot`, nunca exibe `sessions[]` cru — sessão de
+  // outro projeto aberto simultaneamente é escondida, não perdida.
+  const activeProjectRoot = useBoardStore((state) => state.activeProjectRoot);
+  const allSessions = useSessionStore((state) => state.sessions);
+  const sessions = allSessions.filter((session) => session.projectRoot === activeProjectRoot);
   const activeSessionId = useSessionStore((state) => state.activeSessionId);
   const createSession = useSessionStore((state) => state.createSession);
   const focusSession = useSessionStore((state) => state.focusSession);
   const discoverSessions = useSessionStore((state) => state.discoverSessions);
+  const loadPersistedSessions = useSessionStore((state) => state.loadPersistedSessions);
+  const resumeSession = useSessionStore((state) => state.resumeSession);
+  // TERM-04 (04-07-PLAN.md): não listado em `files_modified` de
+  // 04-07-PLAN.md, mas exigido pelo próprio `## Component Inventory` do
+  // UI-SPEC ("SessionSidebar — extended") para que `markExited` alcance
+  // qualquer sessão de verdade — sem isto, `wireSessionExitListener` nunca é
+  // chamado e `pty:session-exited` nunca chega ao store (Rule 2 deviation,
+  // mesmo padrão de `loadPersistedSessions`/`resumeSession` em 04-06-PLAN.md).
+  const wireSessionExitListener = useSessionStore((state) => state.wireSessionExitListener);
 
   // Claude CLI (checagem GLOBAL, independente de projeto): só na primeira
   // montagem da sidebar (app boot), nunca por projeto.
@@ -69,13 +95,23 @@ export function SessionSidebar() {
     };
   }, []);
 
-  // Descoberta de sessões históricas: reavalia a cada open/reopen de
-  // projeto (nunca antes de um `projectRoot` já validado existir).
+  // Descoberta de sessões históricas + carregamento de sessões restauradas
+  // (SESS-04): reavalia a cada open/reopen de projeto (nunca antes de um
+  // `projectRoot` já validado existir). As duas chamadas são independentes
+  // (fontes de dado diferentes — `.jsonl` em disco vs. `app-state.json`) e
+  // nunca spawnam um PtySession por si só.
   useEffect(() => {
     if (projectRoot) {
       void discoverSessions(projectRoot);
+      void loadPersistedSessions(projectRoot);
+      // TERM-04: mesmo `useEffect` de abertura/reabertura de projeto — o
+      // listener singleton de `pty:session-exited` (`channel.ts`) já se
+      // auto-substitui a cada chamada (nunca acumula), então re-wireá-lo
+      // aqui a cada projeto aberto é seguro e cobre o caso de múltiplos
+      // projetos abertos simultaneamente (PROJ-05) sem qualquer guarda extra.
+      wireSessionExitListener();
     }
-  }, [projectRoot, discoverSessions]);
+  }, [projectRoot, discoverSessions, loadPersistedSessions, wireSessionExitListener]);
 
   // Antes da primeira resolução de `checkClaudeOnPath` (`claudePath`
   // continua `undefined`), nunca afirma "ausente" preventivamente — só
@@ -84,8 +120,12 @@ export function SessionSidebar() {
     claudePath === undefined ? "none" : deriveToolMissingState(claudePath, hasGsdCore);
 
   const activeSessions = sessions.filter((session) => session.origin === "live").sort(byLastModifiedDesc);
+  // SESS-04: `restored` (metadado persistido de uma execução anterior) reusa
+  // o MESMO grupo visual/variante `historical` de `origin:"historical"`
+  // (.jsonl descoberto em disco) — 04-UI-SPEC.md ## Color não introduz uma
+  // variante nova para isso, ambos significam "sem PtySession viva ainda".
   const historicalSessions = sessions
-    .filter((session) => session.origin === "historical")
+    .filter((session) => session.origin === "historical" || session.origin === "restored")
     .sort(byLastModifiedDesc);
 
   return (
@@ -99,6 +139,7 @@ export function SessionSidebar() {
         minHeight: 0,
       }}
     >
+      {projectRoot && projectName ? <SidebarScopeBanner projectName={projectName} /> : null}
       <div
         style={{
           display: "flex",
@@ -160,7 +201,12 @@ export function SessionSidebar() {
                   <SessionRow
                     key={session.id}
                     session={session}
-                    variant="live"
+                    // TERM-04 (04-07-PLAN.md): uma sessão `live` cujo
+                    // `pty:session-exited` já foi observado (`markExited`)
+                    // permanece no grupo "Ativas" (02-UI-SPEC.md ##
+                    // Session Sidebar), só a variante do dot/sufixo muda —
+                    // nunca migra para "Histórico".
+                    variant={session.exited ? "exited" : "live"}
                     active={session.id === activeSessionId}
                     onSelect={focusSession}
                   />
@@ -171,7 +217,17 @@ export function SessionSidebar() {
               <>
                 <p style={GROUP_LABEL_STYLE}>{t("sidebar.groups.history")}</p>
                 {historicalSessions.map((session) => (
-                  <SessionRow key={session.id} session={session} variant="historical" />
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    // SESS-04: a row sendo retomada agora (clicada, ainda sem
+                    // PtySession viva — `origin` só é promovido a "live"
+                    // depois que `resumeSession` termina o spawn) recebe o
+                    // mesmo tratamento visual "starting" (pulse) de uma
+                    // sessão nova, 04-UI-SPEC.md ## Color.
+                    variant={session.id === activeSessionId ? "starting" : "historical"}
+                    onSelect={(id) => void resumeSession(id).catch(() => {})}
+                  />
                 ))}
               </>
             ) : null}

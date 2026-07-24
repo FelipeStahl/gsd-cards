@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capabilities somente-leitura do GSD Cards: o board espelha .planning/ mas nunca escreve, cria, remove ou renomeia arquivos (board read-only por decisão de produto). Exceção estreita: opener:allow-open-url permite abrir, no navegador padrão do SO, uma URL clicável impressa no output do terminal (TERM-02) — nunca abrir arquivo/programa local.",
+  "description": "Capabilities do GSD Cards: o board espelha .planning/ mas nunca escreve, cria, remove ou renomeia arquivos ali (board read-only por decisão de produto). Exceção estreita: opener:allow-open-url permite abrir, no navegador padrão do SO, uma URL clicável impressa no output do terminal (TERM-02) — nunca abrir arquivo/programa local. Fase 4 (04-01-PLAN.md) adiciona as PRIMEIRAS permissões de ESCRITA do app: store:allow-* concede acesso a `@tauri-apps/plugin-store`, que grava exclusivamente sob o appDataDir do próprio app (app-state.json e, em plano futuro, snapshots por sessão) — NUNCA sob o `.planning/` do usuário, cuja proteção read-only permanece intacta acima. Concedidas apenas as permissões granulares por comando efetivamente usadas (nunca o bundle catch-all do plugin store), mesma disciplina já aplicada a fs:allow-read-*. notification:allow-* concede o mínimo necessário para pedir permissão e disparar notificações do SO (TERM-04, plano futuro desta fase). Fase 5 (05-02-PLAN.md, DIST-03) adiciona a auto-atualização assinada: updater:allow-check e updater:allow-download-and-install cobrem exatamente as duas chamadas que o frontend faz (verificar e baixar+instalar), nunca o bundle catch-all do plugin updater; process:allow-restart concede só o relançamento do app após a instalação, nunca outras operações de processo do plugin.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -12,6 +12,17 @@
     "fs:allow-exists",
     "fs:allow-size",
     "fs:allow-stat",
-    "opener:allow-open-url"
+    "opener:allow-open-url",
+    "store:allow-load",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-save",
+    "store:allow-delete",
+    "notification:allow-is-permission-granted",
+    "notification:allow-request-permission",
+    "notification:allow-notify",
+    "updater:allow-check",
+    "updater:allow-download-and-install",
+    "process:allow-restart"
   ]
 }

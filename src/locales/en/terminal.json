@@ -13,5 +13,24 @@
   },
   "chrome": {
     "exitedBanner": "Session ended"
+  },
+  "notification": {
+    "awaiting": {
+      "title": "Claude needs you",
+      "body": "Session {{sessionLabel}} is awaiting your permission."
+    },
+    "exited": {
+      "title": "Session ended",
+      "body": "Session {{sessionLabel}} has ended."
+    }
+  },
+  "activity": {
+    "idle": "Idle",
+    "busy": "Busy",
+    "awaiting": "Awaiting permission"
+  },
+  "toolbar": {
+    "openPalette": "Commands",
+    "shortcutHint": "Ctrl+K"
   }
 }

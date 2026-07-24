@@ -1,0 +1,15 @@
+{
+  "available": {
+    "label": "New version available",
+    "tooltip": "Version {{version}} is available.",
+    "action": "Update and restart"
+  },
+  "downloading": {
+    "label": "Downloading update… {{percent}}%"
+  },
+  "error": {
+    "label": "Couldn't update",
+    "action": "Try again",
+    "dismiss": "Dismiss"
+  }
+}

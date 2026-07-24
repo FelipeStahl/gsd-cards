@@ -3,14 +3,21 @@
     "newSession": "Nova sessão",
     "reexpand": "Reabrir sessão",
     "archive": "Arquivar",
-    "delete": "Excluir"
+    "delete": "Excluir",
+    "rename": "Renomear"
   },
   "sidebar": {
     "heading": "Sessões",
     "groups": {
       "active": "Ativas",
       "history": "Histórico"
-    }
+    },
+    "scopeBanner": "Mostrando sessões de: {{projectName}}"
+  },
+  "rename": {
+    "placeholder": "Nome da sessão",
+    "confirm": "Confirmar nome",
+    "cancel": "Cancelar"
   },
   "empty": {
     "heading": "Nenhuma sessão ainda",
@@ -19,8 +26,9 @@
   "row": {
     "labelPrefix": "Sessão",
     "starting": "Iniciando…",
+    "resuming": "Retomando…",
     "exited": "(encerrada)",
-    "historicalTooltip": "Sessão de execuções anteriores — retomar chega na Fase 4"
+    "restoredTooltip": "Histórico restaurado — clique para retomar"
   },
   "confirmDelete": {
     "heading": "Excluir sessão?",

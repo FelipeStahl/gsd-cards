@@ -6,7 +6,12 @@ mod planning_watcher;
 // itens não-`pub` de um módulo não-`pub` são invisíveis fora do crate.
 pub mod process_guard;
 mod project;
-mod pty;
+// `pub` (não `mod` privado) pelo MESMO motivo de `process_guard` acima:
+// `tests/write_session_rejects.rs` — um crate externo — precisa exercitar
+// `PtyManager::write`/`PtyError` diretamente para provar a rejeição real do
+// backend (`PtyError::NotFound`, serde-serializável) sem depender de um
+// `tauri::State`/`Channel` reais (03-01-PLAN.md Task 3, T-03-02).
+pub mod pty;
 mod sessions;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -20,6 +25,24 @@ pub fn run() {
         // `opener:allow-open-url` apenas, nunca `allow-open-path`/
         // `allow-reveal-item-in-dir` (T-02-08).
         .plugin(tauri_plugin_opener::init())
+        // Primeira escrita em disco do app (04-01-PLAN.md) — SEMPRE
+        // appDataDir via este plugin, NUNCA o `.planning/` do usuário
+        // (invariante de produto, 04-CONTEXT.md `## Phase Boundary`).
+        .plugin(tauri_plugin_store::Builder::new().build())
+        // Notificações do SO (TERM-04, plano futuro desta fase) — registrado
+        // já neste plano-tracer junto com o store para não reabrir o gate de
+        // legitimidade de pacote duas vezes.
+        .plugin(tauri_plugin_notification::init())
+        // Auto-atualização assinada (DIST-03, 05-02-PLAN.md) — só as duas
+        // capabilities granulares que o frontend chama de fato: verificar
+        // (`updater:allow-check`) e baixar+instalar (`updater:allow-download-and-install`),
+        // nunca o bundle catch-all `updater:default` (mesma disciplina do
+        // store/notification acima).
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        // Relançar o app após instalar o update (`process:allow-restart`) —
+        // registrado junto com o updater para não reabrir o gate de
+        // legitimidade de pacote duas vezes (05-02-PLAN.md Task 1).
+        .plugin(tauri_plugin_process::init())
         .manage(planning_watcher::WatcherState::default())
         .manage(pty::PtyManager::default())
         .invoke_handler(tauri::generate_handler![

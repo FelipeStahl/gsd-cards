@@ -2,5 +2,19 @@
   "app": {
     "title": "GSD Cards",
     "loading": "Loading…"
+  },
+  "actions": {
+    "backToHome": "Back to home"
+  },
+  "language": {
+    "groupLabel": "Interface language",
+    "pt": {
+      "short": "PT",
+      "full": "Portuguese"
+    },
+    "en": {
+      "short": "EN",
+      "full": "English"
+    }
   }
 }

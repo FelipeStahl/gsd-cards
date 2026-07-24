@@ -1,19 +1,28 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { formatDistanceToNow } from "date-fns";
+import { enUS, ptBR } from "date-fns/locale";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { i18n } from "../../i18n";
 import type { SessionDescriptor } from "../../stores/session-store";
 
 const archiveSessionMock = vi.fn();
+const renameSessionMock = vi.fn();
 
 vi.mock("../../stores/session-store", () => ({
-  useSessionStore: (selector: (state: { archiveSession: typeof archiveSessionMock }) => unknown) =>
-    selector({ archiveSession: archiveSessionMock }),
+  useSessionStore: (
+    selector: (state: {
+      archiveSession: typeof archiveSessionMock;
+      renameSession: typeof renameSessionMock;
+    }) => unknown,
+  ) => selector({ archiveSession: archiveSessionMock, renameSession: renameSessionMock }),
 }));
 
 const { SessionRow } = await import("./SessionRow");
 
 beforeEach(() => {
   archiveSessionMock.mockReset();
+  renameSessionMock.mockReset();
 });
 
 function makeSession(overrides: Partial<SessionDescriptor> = {}): SessionDescriptor {
@@ -21,6 +30,7 @@ function makeSession(overrides: Partial<SessionDescriptor> = {}): SessionDescrip
     id: "session-a3f91c2dabc",
     lastModified: new Date("2026-07-01T00:00:00Z"),
     origin: "live",
+    projectRoot: "/repo",
     ...overrides,
   };
 }
@@ -101,18 +111,155 @@ describe("SessionRow — variante live", () => {
   });
 });
 
-describe("SessionRow — variante historical", () => {
-  it("clique numa row histórica NÃO chama onSelect e mostra o tooltip session.row.historicalTooltip", () => {
+describe("SessionRow — renomear (SESS-05)", () => {
+  it("mostra o botão Renomear no hover, leftmost no grupo de ações", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    expect(screen.getByRole("button", { name: "Renomear" })).toBeInTheDocument();
+  });
+
+  it("clicar Renomear troca o label estático pelo controle inline-edit, sem chamar onSelect", () => {
+    const session = makeSession();
+    const onSelect = vi.fn();
+    render(<SessionRow session={session} variant="live" onSelect={onSelect} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Renomear" }));
+
+    expect(screen.getByPlaceholderText("Nome da sessão")).toBeInTheDocument();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("Enter confirma o rename — chama renameSession(id, valor) e volta ao label estático", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Renomear" }));
+    const input = screen.getByPlaceholderText("Nome da sessão");
+    fireEvent.change(input, { target: { value: "Meu terminal" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(renameSessionMock).toHaveBeenCalledWith(session.id, "Meu terminal");
+    expect(screen.queryByPlaceholderText("Nome da sessão")).not.toBeInTheDocument();
+  });
+
+  it("clicar Check confirma o rename da mesma forma que Enter", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Renomear" }));
+    const input = screen.getByPlaceholderText("Nome da sessão");
+    fireEvent.change(input, { target: { value: "Meu terminal" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar nome" }));
+
+    expect(renameSessionMock).toHaveBeenCalledWith(session.id, "Meu terminal");
+  });
+
+  it("Esc cancela sem chamar renameSession, volta ao label estático original", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Renomear" }));
+    const input = screen.getByPlaceholderText("Nome da sessão");
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    expect(renameSessionMock).not.toHaveBeenCalled();
+    expect(screen.queryByPlaceholderText("Nome da sessão")).not.toBeInTheDocument();
+    expect(screen.getByText(`Sessão ${session.id.slice(0, 8)}`)).toBeInTheDocument();
+  });
+
+  it("clicar X cancela da mesma forma que Esc", () => {
+    const session = makeSession();
+    render(<SessionRow session={session} variant="live" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Renomear" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(renameSessionMock).not.toHaveBeenCalled();
+    expect(screen.queryByPlaceholderText("Nome da sessão")).not.toBeInTheDocument();
+  });
+
+  it("sessão com nome customizado mostra o nome no lugar do label derivado, id permanece no title", () => {
+    const session = makeSession({ name: "Meu terminal" });
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    expect(screen.getByText("Meu terminal")).toBeInTheDocument();
+    expect(screen.queryByText(`Sessão ${session.id.slice(0, 8)}`)).not.toBeInTheDocument();
+    expect(container.querySelector(".session-row")).toHaveAttribute("title", session.id);
+  });
+});
+
+describe("SessionRow — dot ativo por atividade (ACT-03)", () => {
+  it("live + busy: dot vira warning + pulse (ActivityDot)", () => {
+    const session = makeSession({ activity: "busy" });
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    const dot = container.querySelector(".status-dot");
+    expect(dot).toHaveClass("status-dot--warning");
+    expect(dot).toHaveClass("status-dot--pulse");
+  });
+
+  it("live + awaiting: dot vira accent + pulse", () => {
+    const session = makeSession({ activity: "awaiting" });
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    const dot = container.querySelector(".status-dot");
+    expect(dot).toHaveClass("status-dot--accent");
+    expect(dot).toHaveClass("status-dot--pulse");
+  });
+
+  it("live + idle: dot vira success, sem pulse", () => {
+    const session = makeSession({ activity: "idle" });
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    const dot = container.querySelector(".status-dot");
+    expect(dot).toHaveClass("status-dot--success");
+    expect(dot).not.toHaveClass("status-dot--pulse");
+  });
+
+  it("live + activity undefined: mantém o fallback estático success (Fase 2)", () => {
+    const session = makeSession();
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    const dot = container.querySelector(".status-dot");
+    expect(dot).toHaveClass("status-dot--success");
+    expect(dot).not.toHaveClass("status-dot--pulse");
+  });
+
+  it("historical não é afetado por activity (ignora o campo mesmo se presente)", () => {
+    const session = makeSession({ origin: "historical", activity: "busy" });
+    const { container } = render(<SessionRow session={session} variant="historical" />);
+
+    const dot = container.querySelector(".status-dot");
+    expect(dot).toHaveClass("status-dot--neutral");
+    expect(dot).toHaveClass("status-dot--outline");
+    expect(dot).not.toHaveClass("status-dot--pulse");
+  });
+});
+
+describe("SessionRow — variante historical/restored (SESS-04)", () => {
+  it("clique numa row histórica/restaurada CHAMA onSelect com o id — resumeSession substitui o placeholder da Fase 2", () => {
     const session = makeSession({ origin: "historical" });
     const onSelect = vi.fn();
     render(<SessionRow session={session} variant="historical" onSelect={onSelect} />);
 
     fireEvent.click(screen.getByRole("button"));
 
-    expect(onSelect).not.toHaveBeenCalled();
-    expect(
-      screen.getByText("Sessão de execuções anteriores — retomar chega na Fase 4"),
-    ).toBeInTheDocument();
+    expect(onSelect).toHaveBeenCalledWith(session.id);
+  });
+
+  it("mostra o ícone History (14px, muted) com o tooltip session.row.restoredTooltip", () => {
+    const session = makeSession({ origin: "historical" });
+    render(<SessionRow session={session} variant="historical" />);
+
+    expect(screen.getByTitle("Histórico restaurado — clique para retomar")).toBeInTheDocument();
+  });
+
+  it("a variante live NÃO mostra o ícone History", () => {
+    const session = makeSession({ origin: "live" });
+    render(<SessionRow session={session} variant="live" />);
+
+    expect(screen.queryByTitle("Histórico restaurado — clique para retomar")).not.toBeInTheDocument();
   });
 
   it("dot histórico usa o modificador CSS status-dot--outline sobre neutral", () => {
@@ -133,5 +280,39 @@ describe("SessionRow — variante exited", () => {
     expect(
       screen.getByText(`Sessão ${session.id.slice(0, 8)} (encerrada)`),
     ).toBeInTheDocument();
+  });
+});
+
+describe("SessionRow — o timestamp relativo (date-fns) segue i18n.language (DIST-01, 05-01-PLAN.md)", () => {
+  const now = new Date("2026-07-24T12:00:00.000Z");
+  const lastModified = new Date("2026-07-22T12:00:00.000Z"); // 2 dias antes de `now`
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    // `i18n.changeLanguage` é um singleton GLOBAL — sem resetar (e AWAIT'ar)
+    // aqui, este teste vazaria "en" para os testes seguintes deste arquivo.
+    await i18n.changeLanguage("pt-BR");
+  });
+
+  it("após i18n.changeLanguage('en'), o timestamp relativo re-renderiza no locale en-US (era pt-BR antes da troca)", async () => {
+    const session = makeSession({ lastModified });
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    const ptText = formatDistanceToNow(lastModified, { addSuffix: true, locale: ptBR });
+    expect(container.textContent).toContain(ptText);
+
+    await act(async () => {
+      await i18n.changeLanguage("en");
+    });
+
+    const enText = formatDistanceToNow(lastModified, { addSuffix: true, locale: enUS });
+    expect(enText).not.toBe(ptText);
+    expect(container.textContent).toContain(enText);
+    expect(container.textContent).not.toContain(ptText);
   });
 });

@@ -94,6 +94,27 @@
   box-sizing: border-box;
 }
 
+/* Plano 04 (Fase 3) — modificador de pulso do indicador de atividade do
+   terminal (ACT-03 visual): opacidade 100%->40%->100% em loop, composicional
+   sobre a classe de tom existente (mesmo padrão do `--outline` acima), para
+   `StatusTone` continuar um enum fechado de 4 valores — nenhum novo
+   componente de dot é criado (`03-UI-SPEC.md` ## Color). Aplicado pelos
+   estados `busy`/`awaiting` de `ActivityDot`, nunca `idle`. */
+.status-dot--pulse {
+  animation: status-dot-pulse 1200ms ease-in-out infinite;
+}
+@keyframes status-dot-pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 /* Plano 06 (Fase 2) — botões de Arquivar/Excluir da SessionRow (SESS-06):
    só aparecem no hover da row (ou quando um dos dois tem foco de teclado,
    `:focus-within`, para não ficarem inacessíveis via Tab). Inline styles

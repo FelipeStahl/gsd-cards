@@ -1,0 +1,44 @@
+{
+  "palette": {
+    "placeholder": "Search command…",
+    "empty": "No command found"
+  },
+  "list": {
+    "discuss": {
+      "label": "Discuss phase",
+      "command": "/gsd-discuss-phase"
+    },
+    "plan": {
+      "label": "Plan phase",
+      "command": "/gsd-plan-phase"
+    },
+    "execute": {
+      "label": "Execute phase",
+      "command": "/gsd-execute-phase"
+    },
+    "verify": {
+      "label": "Verify work",
+      "command": "/gsd-verify-work"
+    },
+    "quick": {
+      "label": "Quick task",
+      "command": "/gsd-quick"
+    },
+    "next": {
+      "label": "Next step",
+      "command": "/gsd-next"
+    },
+    "progress": {
+      "label": "View progress",
+      "command": "/gsd-progress"
+    },
+    "status": {
+      "label": "Project status",
+      "command": "/gsd-stats"
+    },
+    "help": {
+      "label": "Help",
+      "command": "/gsd-help"
+    }
+  }
+}

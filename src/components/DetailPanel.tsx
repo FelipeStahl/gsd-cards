@@ -9,6 +9,14 @@
 // Botão "Ver artefato" consome a chave i18n `board.detail.viewArtifact`
 // (namespace `board`, criada no Plano 03) para abrir o modal (D-11) a partir
 // de qualquer linha de artefato, inclusive as marcadas como não reconhecidas.
+//
+// Plano 04 (Fase 3, ACT-01/02/03): logo abaixo da row de `StatusBadge`, uma
+// nova row expõe a mesma ação contextual guardada do card
+// (`PhaseCardAction`, `variant="detail"`) mais a legenda "Enviar para: Sessão
+// <id8>" + `ActivityDot` — reaproveita `board.actions.sendTo` (Plano 01),
+// nenhuma chave i18n nova. Gate idêntico ao do card: `derivePhaseAction` nulo
+// (status `complete`) OU `phase.id` reprovado em `sanitizePhaseId` (T-03-01)
+// não renderiza nem botão nem legenda.
 
 import { useEffect } from "react";
 import { AlertTriangle, X } from "lucide-react";
@@ -17,10 +25,29 @@ import { useTranslation } from "react-i18next";
 import { useUiStore } from "../stores/ui-store";
 import { useDetailStore } from "../stores/detail-store";
 import { useBoardStore } from "../stores/board-store";
+import { useSessionStore } from "../stores/session-store";
+import { derivePhaseAction, sanitizePhaseId } from "../planning/actions";
 import { StatusBadge } from "./StatusBadge";
+import { PhaseCardAction } from "./PhaseCardAction";
+import { ActivityDot } from "./ActivityDot";
+
+/**
+ * Marcador de posição improvável de colisão com texto real, usado para
+ * separar o template de `board.actions.sendTo` ao redor de `{{session}}` —
+ * permite estilizar só o id da sessão em JetBrains Mono (mesmo formato
+ * "Sessão " + id.slice(0,8) de `SessionRow.tsx`) sem introduzir uma chave
+ * i18n nova nem depender de `<Trans>`.
+ */
+const SESSION_SLOT_MARKER = "%%SESSION%%";
+
+function splitAroundSessionSlot(template: string): [string, string] {
+  const [before, after] = template.split(SESSION_SLOT_MARKER);
+  return [before ?? "", after ?? ""];
+}
 
 export function DetailPanel() {
   const { t } = useTranslation("board");
+  const { t: tSession } = useTranslation("session");
 
   const selectedPhaseId = useUiStore((state) => state.selectedPhaseId);
   const clearSelection = useUiStore((state) => state.clearSelection);
@@ -37,6 +64,10 @@ export function DetailPanel() {
   const phase = useBoardStore((state) =>
     state.project?.phases.find((candidate) => candidate.id === selectedPhaseId),
   );
+
+  const activeSessionId = useSessionStore((state) => state.activeSessionId);
+  const lastFocusedSessionId = useSessionStore((state) => state.lastFocusedSessionId);
+  const sessions = useSessionStore((state) => state.sessions);
 
   useEffect(() => {
     if (selectedPhaseId) void loadPhaseTree(selectedPhaseId);
@@ -57,6 +88,21 @@ export function DetailPanel() {
     number: phase?.number ?? selectedPhaseId,
     name: phase?.name ?? "",
   });
+
+  // Mesmo gate de `PhaseCardAction` (`complete` -> `derivePhaseAction` nulo;
+  // `phase.id` reprovado em `sanitizePhaseId`, T-03-01) — "nenhum botão nem
+  // legenda", nunca um estado parcial.
+  const action = phase ? derivePhaseAction(phase.diskStatus) : null;
+  const sanitizedId = phase ? sanitizePhaseId(phase.id) : null;
+  const showAction = Boolean(phase && action && sanitizedId);
+
+  const targetSessionId = activeSessionId ?? lastFocusedSessionId;
+  const target = sessions.find((session) => session.id === targetSessionId && session.origin === "live");
+
+  const [sendToPrefix, sendToSuffix] = target
+    ? splitAroundSessionSlot(t("actions.sendTo", { session: SESSION_SLOT_MARKER }))
+    : ["", ""];
+  const sendToSessionLabel = target ? `${tSession("row.labelPrefix")} ${target.id.slice(0, 8)}` : "";
 
   return (
     <div
@@ -130,6 +176,42 @@ export function DetailPanel() {
             {phase ? (
               <div style={{ display: "flex", alignItems: "center" }}>
                 <StatusBadge status={phase.badge} />
+              </div>
+            ) : null}
+
+            {phase && showAction ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-md)", flexWrap: "wrap" }}>
+                <PhaseCardAction phase={phase} variant="detail" />
+                {target ? (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--spacing-xs)" }}>
+                    <span
+                      style={{
+                        fontSize: "var(--font-size-label)",
+                        lineHeight: "var(--line-height-label)",
+                        fontWeight: "var(--font-weight-label)",
+                        color: "var(--color-foreground)",
+                        opacity: 0.75,
+                      }}
+                    >
+                      {sendToPrefix}
+                      <span style={{ fontFamily: "var(--font-family-mono)" }}>{sendToSessionLabel}</span>
+                      {sendToSuffix}
+                    </span>
+                    <ActivityDot activity={target.activity ?? "idle"} />
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      fontSize: "var(--font-size-label)",
+                      lineHeight: "var(--line-height-label)",
+                      fontWeight: "var(--font-weight-label)",
+                      color: "var(--color-foreground)",
+                      opacity: 0.75,
+                    }}
+                  >
+                    {t("actions.guard.noSession")}
+                  </span>
+                )}
               </div>
             ) : null}
 

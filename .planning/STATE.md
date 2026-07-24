@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 02
-current_phase_name: sess-o-viva
+current_phase: 05
+current_phase_name: comunidade
 status: verifying
-stopped_at: Completed 02-06-PLAN.md (Phase 02 fully executed — ready for verification)
-last_updated: "2026-07-23T18:26:14.009Z"
-last_activity: 2026-07-23
-last_activity_desc: Phase 02 execution resumed (wave continue)
+stopped_at: Completed 05-04-PLAN.md
+last_updated: "2026-07-24T08:43:39.555Z"
+last_activity: 2026-07-24
+last_activity_desc: Phase 05 execution started
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 14
-  completed_plans: 14
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 30
+  completed_plans: 30
 ---
 
 # Project State
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Abrir o app e ver fielmente, em tempo real, onde cada projeto GSD está — o board é um espelho confiável do `.planning/`.
-**Current focus:** Phase 02 — sess-o-viva
+**Current focus:** Phase 05 — comunidade
 
 ## Current Position
 
-Phase: 02 (sess-o-viva) — EXECUTING
-Plan: 6 of 6
+Phase: 05 (comunidade) — EXECUTING
+Plan: 4 of 4
 Status: Phase complete — ready for verification
-Last activity: 2026-07-23 — Phase 02 execution resumed (wave continue)
+Last activity: 2026-07-24 — Phase 05 execution started
 
 Progress: [██████████] 100%
 
@@ -70,6 +70,22 @@ Progress: [██████████] 100%
 | Phase 02 P04 | 16min | 2 tasks | 20 files |
 | Phase 02 P05 | 20min | 2 tasks | 11 files |
 | Phase 02 P06 | 25min | 2 tasks | 16 files |
+| Phase 03 P01 | 21min | 3 tasks | 13 files |
+| Phase 03 P02 | 6min | 2 tasks | 2 files |
+| Phase 03 P03 | 8min | 3 tasks | 9 files |
+| Phase 03 P04 | 33min | 3 tasks | 12 files |
+| Phase 03 P05 | 15min | 3 tasks | 10 files |
+| Phase 04 P01 | 10min | 3 tasks | 14 files |
+| Phase 04 P02 | 10min | 2 tasks | 3 files |
+| Phase 04 P03 | 5min | 2 tasks | 7 files |
+| Phase 04 P04 | 15min | 3 tasks | 13 files |
+| Phase 04 P05 | 16min | 2 tasks | 17 files |
+| Phase 04 P06 | 32min | 3 tasks | 16 files |
+| Phase 04 P07 | 20min | 2 tasks | 10 files |
+| Phase 05-comunidade P01 | 24min | 3 tasks | 15 files |
+| Phase 05-comunidade P02 | 6min | 2 tasks | 6 files |
+| Phase 05 P03 | 7min | 3 tasks | 13 files |
+| Phase 05 P04 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -111,6 +127,43 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 02-06]: liveSessions implementado como Map de módulo fora do shape zustand/immer — o autoFreeze do immer congela recursivamente todo o estado a cada set(), inclusive campos não tocados, o que quebraria a mutação direta de um Map alcançável pelo estado
 - [Phase ?]: [Phase 02-06]: spawnSession só é chamado uma vez por sessão (hasLiveSession); troca de foco depois disso só redireciona setSessionBytesHandler — resolve o double-invoke do StrictMode sem matar/recriar a sessão
 - [Phase ?]: [Phase 02-06]: Archive/Delete restritos a rows não-históricas — sessão histórica não tem PtySession viva a matar
+- [Phase ?]: [Phase 03-01]: phase.id inválido (T-03-01) não renderiza botão algum — mesmo tratamento de complete, não um botão desabilitado
+- [Phase ?]: [Phase 03-01]: PtyManager::write extraído como método público (precedente kill_all) para o teste de integração externo write_session_rejects.rs provar o PtyError::NotFound real
+- [Phase ?]: [Phase 03-02]: Package legitimacy checkpoint for strip-ansi resolved via orchestrator pre-authorization (SUS verdict was a sandbox download-telemetry gap, publisher sindresorhus/chalk, no red flags)
+- [Phase ?]: [Phase 03-03]: classifyActivity nunca retorna idle - so busy/awaiting/null; idle e responsabilidade exclusiva do caller (wireTerminalActivity) via timer de quiescencia, ja que silencio nao e observavel a partir de uma unica string
+- [Phase ?]: [Phase 03-03]: wireTerminalActivity chama clearActivityHandler incondicionalmente no teardown do effect do TerminalView (unmount E troca de sessao) - redundante-mas-seguro com o delete que killSession ja faz no mesmo mapa
+- [Phase ?]: [Phase 03-04]: undefined activity treated as idle everywhere (resolveInjection + ActivityDot fallback), not just in the resolver
+- [Phase ?]: [Phase 03-04]: DetailPanel's send-to caption splits board.actions.sendTo around a private marker string to give the session-id substring its own JetBrains Mono span, without a new i18n key
+- [Phase ?]: [Phase 03-05]: commands.list.status.command resolves to /gsd-stats (not the /gsd-status carried verbatim in 03-UI-SPEC.md) - .claude/commands/gsd-stats.md exists, gsd-status.md does not; i18n key name kept unchanged
+- [Phase ?]: [Phase 03-05]: CommandPalette.tsx built during Task 2 (not Task 3) because GsdCommandToolbar unconditionally imports/renders it and GSD_COMMANDS flows back into CommandPalette - a circular data/render relationship the plan itself designs; Task 3 added CommandPalette.test.tsx against the already-working component
+- [Phase ?]: [Phase 03-05]: focusTerminalSurface() queries the DOM globally for the single .xterm-helper-textarea instead of a ref threaded through TerminalView.tsx (outside this plan's files_modified) - safe because the app mounts at most one live terminal instance at a time (WebGL context limit architecture)
+- [Phase ?]: [Phase 04-01]: Task 1 package legitimacy checkpoint resolved via orchestrator pre-authorization (both plugin-store/plugin-notification are official tauri-apps org, SUS verdict was a sandbox download-telemetry gap)
+- [Phase ?]: [Phase 04-01]: view defaults to "board" not "home" — nothing in this plan sets view to home automatically, the home-as-default-entry-point behavior is deferred to Plan 04-03/04-04
+- [Phase ?]: [Phase 04-01]: upsertRecent write failures are swallowed, never rethrown into openProject — recents list is convenience, not source of truth
+- [Phase ?]: [Phase 04-01]: Tracer feedback gate checkpoint approved by orchestrator based on automated proof (10 new tests, 407/407 suite, cargo green); live-GUI appDataDir confirmation deferred to human UAT via /gsd-verify-work 4
+- [Phase ?]: [Phase 04-02]: handle_session_exit extracted with a generic notify callback (not tied to AppHandle::emit) so the reader-thread purge+emit is unit-testable without a real tauri::AppHandle/tauri::test dependency
+- [Phase ?]: [Phase 04-02]: insert_dummy_session test helper spawns a real portable_pty session (openpty + spawn_command + TreeGuard::attach) to populate PtyManager for remove_exited/handle_session_exit tests, since PtySession's private fields are only constructible via a real spawn
+- [Phase ?]: [Phase 04-03]: switchProject does NOT call upsertRecent — not required by the plan's action spec, avoids scope creep on a 'costly' reversibility-rated change
+- [Phase ?]: [Phase 04-03]: recentlyUpdatedPhaseIds cleared inside switchProject's commit — prevents a stale glow window from mis-highlighting phase ids in the newly-active project's board
+- [Phase ?]: [Phase 04-04]: createProjectSession spawns the PTY directly (calls spawnSession itself) instead of createSession's lazy-spawn-on-TerminalView-mount pattern — no TerminalView mounts while view === 'home'
+- [Phase ?]: [Phase 04-04]: removeRecent() added to app-store.ts (Rule 2 deviation) — the plan's Task 2 action required the error card's 'Remover da lista' action to persist removal, but app-store.ts only exposed upsertRecent/getRecents
+- [Phase ?]: [Phase 04-04]: ProjectCard treats parseStateFile's overall 'unrecognized' result the same as a validateProjectRoot/read rejection — both degrade to the single non-clickable error card variant
+- [Phase ?]: [Phase 04-05]: RenameSessionControl reads renameSession from the store directly (sessionId prop + single onDone callback) instead of onConfirm/onCancel delegating through SessionRow — matches the plan's acceptance grep and keeps the store call co-located with the input
+- [Phase ?]: [Phase 04-05]: session name persistence (setSessionName/getSessionNames) added to app-store.ts under a sessionNames key — write-only this plan, rehydration on restore is 04-06's scope (SESS-04)
+- [Phase ?]: [Phase 04-06]: resumeSession validates isValidSessionId FIRST, before descriptor lookup — defense-in-depth flag-injection guard independent of lookup order
+- [Phase ?]: [Phase 04-06]: origin flip historical/restored->live happens AFTER spawnSession resolves so the row renders variant="starting" (pulse) while the resume is in flight
+- [Phase ?]: [Phase 04-06]: app-store.ts (upsertPersistedSession/getPersistedSessions) and SessionSidebar.tsx wiring added outside the plan's files_modified list (Rule 2) — required for loadPersistedSessions/resumeSession to be reachable end-to-end
+- [Phase ?]: [Phase 04-07]: wireSessionExitListener is an explicit, lazily-invoked store action (called from SessionSidebar's project-open effect) instead of a module-top-level side effect — the eager version broke 5 unrelated test files via synchronous mock-export errors and unhandled promise rejections against the real @tauri-apps/api/event
+- [Phase ?]: [Phase 04-07]: DrawerRail's badge computation now filters sessions[] by activeProjectRoot before deriving liveCount/hasAwaiting/hasExited, fixing a pre-existing scope gap where the badge counted live sessions across all open projects, not just the active one
+- [Phase ?]: [Phase 04-07]: markExited never demotes origin — a live session that exits keeps origin:"live" with exited:true (02-UI-SPEC.md: exited-this-run sessions stay in Ativas, never migrate to Histórico)
+- [Phase ?]: DIST-01: getLanguage() enum-validates the persisted language value (pt-BR|en) before returning — an unrecognized value resolves to null, never reaching i18n.changeLanguage raw (T-05-01)
+- [Phase ?]: DIST-01: LanguageSwitcher's full-name aria-label/title are i18n keys, so they read in the CURRENT UI language (not a fixed autonym) — literal reading of the UI-SPEC copywriting contract
+- [Phase ?]: [Phase 05-02]: Granted updater:allow-check + updater:allow-download-and-install + process:allow-restart (not updater:default) per RESEARCH.md Pitfall 2 — preserves capabilities/default.json's own no-catch-all rule
+- [Phase ?]: [Phase 05-02]: Package legitimacy checkpoint for plugin-updater/plugin-process resolved via orchestrator pre-authorization — same tauri-apps org/repo already trusted for five plugins across Phases 1-4, SUS verdict was a sandbox telemetry gap
+- [Phase ?]: update-store stores the live plugin Update object (pendingUpdate) alongside state/percent/version so available/error actions can re-invoke installUpdateAndRelaunch without re-checking
+- [Phase ?]: installUpdateAndRelaunch accepts an optional onProgress callback wired to the plugin's Started/Progress download events (not a synthetic timer) to drive the downloading state's percent label
+- [Phase ?]: [Phase 05-04]: Placeholder pubkey chosen as base64 encoding of an obviously-fake human-readable warning string, satisfying Tauri's base64-shaped config schema without any real key material
+- [Phase ?]: [Phase 05-04]: Both plan checkpoints (placeholder-pubkey confirmation, maintainer signing-key handoff gate) resolved via orchestrator pre-authorization for this autonomous --to 5 run; no real ed25519 key generated or referenced
 
 ### Pending Todos
 
@@ -127,6 +180,16 @@ None yet.
 - [Phase 2]: Zombie processes do PTY / ConPTY no Windows — tree-kill e handlers de saída como critério de fundação, testar em máquina Windows real.
 - [Phase 02-05]: Nenhum plano da Fase 2 (01-06) construiu o TerminalPane/chrome header (02-UI-SPEC.md) — o ícone Buscar 32x32 não existe; TerminalSearchBar abre só via Ctrl+F/Cmd+F. Registrado em WINDOWS.md.
 
+## Deferred Verification
+
+| Phase | State | Resume |
+|-------|-------|--------|
+| 1 | verification_deferred_human | /gsd-verify-work 1 |
+| 2 | verification_deferred_human | /gsd-verify-work 2 |
+| 3 | verification_deferred_human | /gsd-verify-work 3 |
+| 4 | verification_deferred_human | /gsd-verify-work 4 |
+| 5 | verification_deferred_human | /gsd-verify-work 5 |
+
 ## Deferred Items
 
 Items acknowledged and carried forward from previous milestone close:
@@ -137,6 +200,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-23T18:26:13.996Z
-Stopped at: Completed 02-06-PLAN.md (Phase 02 fully executed — ready for verification)
+Last session: 2026-07-24T08:43:39.537Z
+Stopped at: Completed 05-04-PLAN.md
 Resume file: None

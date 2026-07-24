@@ -27,6 +27,39 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all"
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "DeveloperTool",
+    "publisher": "GSD Cards contributors",
+    "copyright": "Copyright © 2026 GSD Cards contributors",
+    "shortDescription": "Graphical interface for the Claude CLI + gsd-core workflow",
+    "longDescription": "Desktop app that mirrors your .planning/ artifacts as a real-time kanban board and manages persistent Claude CLI sessions.",
+    "createUpdaterArtifacts": true,
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "linux": {
+      "deb": {},
+      "appimage": {}
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "UEFOU0lHTl9QTEFDRUhPTERFUl9OT1RfQV9SRUFMX0tFWV9SRVBMQUNFX1ZJQV9UQVVSSV9TSUdORVJfR0VORVJBVEU=",
+      "endpoints": [
+        "https://github.com/FelipeStahl/gsd-cards/releases/latest/download/latest.json"
+      ]
+    }
   }
 }
