@@ -38,22 +38,34 @@ export function AppShell() {
   // `HomeScreen.tsx`.
   useEffect(() => {
     let cancelled = false;
-    void getLanguage().then((saved) => {
-      if (cancelled) return;
-      if (saved) {
-        // Valor válido (já enum-validado por `getLanguage`) e diferente do
-        // default de boot — restaura a escolha do usuário.
-        if (saved !== i18n.language) void i18n.changeLanguage(saved);
-        return;
-      }
-      // Nenhuma escolha salva ainda (primeiro boot): fallback de
-      // `navigator.language` — só troca para "en" quando o locale do SO
-      // começa com "en"; qualquer outro locale mantém o default pt-BR
-      // (05-CONTEXT.md, RESEARCH "Don't Hand-Roll" — sem parser de locale).
-      if (navigator.language.toLowerCase().startsWith("en")) {
-        void i18n.changeLanguage("en");
-      }
-    });
+    // WR-01 fix (05-REVIEW.md): `getLanguage()` enum-valida um valor
+    // devolvido com sucesso, mas não protege a própria chamada de IPC
+    // (`appStore.get()`) contra rejeição — sem este `.catch()`, uma falha de
+    // leitura do store (arquivo bloqueado, appDataDir ilegível etc.) vira uma
+    // unhandled promise rejection e o fallback de `navigator.language`
+    // abaixo nunca roda. Mesma disciplina de "nunca quebra o boot" já
+    // aplicada em `checkForUpdate()` (`check().catch(() => null)`,
+    // `src/updates/check-update.ts:30`) — degrada para `null`, que cai no
+    // mesmo caminho de "nenhuma escolha salva ainda".
+    void getLanguage()
+      .catch(() => null)
+      .then((saved) => {
+        if (cancelled) return;
+        if (saved) {
+          // Valor válido (já enum-validado por `getLanguage`) e diferente do
+          // default de boot — restaura a escolha do usuário.
+          if (saved !== i18n.language) void i18n.changeLanguage(saved);
+          return;
+        }
+        // Nenhuma escolha salva ainda (primeiro boot, ou leitura falhou
+        // acima): fallback de `navigator.language` — só troca para "en"
+        // quando o locale do SO começa com "en"; qualquer outro locale
+        // mantém o default pt-BR (05-CONTEXT.md, RESEARCH "Don't Hand-Roll"
+        // — sem parser de locale).
+        if (navigator.language.toLowerCase().startsWith("en")) {
+          void i18n.changeLanguage("en");
+        }
+      });
     return () => {
       cancelled = true;
     };

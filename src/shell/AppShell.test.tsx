@@ -325,6 +325,32 @@ describe("AppShell — restauração de idioma no boot (DIST-01, T-05-01)", () =
     });
     expect(changeLanguageSpy).not.toHaveBeenCalled();
   });
+
+  it("WR-01: getLanguage() rejeitado (falha de IPC/leitura do store) não lança — degrada para o fallback de navigator.language, sem unhandled rejection", async () => {
+    getLanguageMock.mockRejectedValue(new Error("appStore.get() indisponível neste teste"));
+    Object.defineProperty(window.navigator, "language", { value: "en-US", configurable: true });
+    const changeLanguageSpy = spyOnChangeLanguage();
+    const unhandledRejections: unknown[] = [];
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      unhandledRejections.push(event.reason);
+    };
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+
+    try {
+      render(<AppShell />);
+
+      // O boot-restore effect degrada como se nenhuma escolha estivesse
+      // salva: cai no fallback de `navigator.language` ("en-US" -> "en"),
+      // exatamente como o teste-irmão de "sem idioma salvo" acima.
+      await waitFor(() => {
+        expect(changeLanguageSpy).toHaveBeenCalledWith("en");
+      });
+    } finally {
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+    }
+
+    expect(unhandledRejections).toHaveLength(0);
+  });
 });
 
 describe("AppShell — checagem de atualização no boot (DIST-03, T-05-05)", () => {
