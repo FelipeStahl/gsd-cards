@@ -91,3 +91,44 @@ export async function setSessionName(id: string, name: string): Promise<void> {
 export async function getSessionNames(): Promise<Record<string, string>> {
   return (await appStore.get<Record<string, string>>(SESSION_NAMES_KEY)) ?? {};
 }
+
+const SESSIONS_KEY = "sessions";
+
+/**
+ * Metadado PEQUENO de uma sessão para restauração lazy (SESS-04,
+ * 04-06-PLAN.md) — id, dono (`projectRoot`, load-bearing para o `cwd` do
+ * `claude --resume`, Pitfall 2), nome customizado e `lastActive`. NUNCA o
+ * snapshot do buffer em si — esse vive em `session-<id>.json`
+ * (`persistence/session-snapshot.ts`), pelo mesmo motivo de
+ * `RECENTS_KEY`/`SESSION_NAMES_KEY` viverem aqui (Pitfall 4).
+ */
+export interface PersistedSessionEntry {
+  id: string;
+  projectRoot: string;
+  name?: string;
+  /** Timestamp ISO da última vez que a sessão perdeu foco (gravado por `persistSnapshot`, session-store.ts). */
+  lastActive: string;
+}
+
+/**
+ * Insere/atualiza o metadado de uma sessão — mesmo padrão de
+ * `upsertRecent` (remove qualquer entrada existente com o mesmo `id`,
+ * prepende a nova, nunca duplica).
+ */
+export async function upsertPersistedSession(entry: PersistedSessionEntry): Promise<void> {
+  const sessions = (await appStore.get<PersistedSessionEntry[]>(SESSIONS_KEY)) ?? [];
+  const next = [entry, ...sessions.filter((session) => session.id !== entry.id)];
+  await appStore.set(SESSIONS_KEY, next);
+  await appStore.save();
+}
+
+/**
+ * Lê os metadados de sessão persistidos, filtrados por `projectRoot` — a
+ * restauração é sempre escopada por projeto (PROJ-05/04-05-PLAN.md), nunca
+ * global. `[]` quando nenhuma sessão foi persistida ainda para esse root,
+ * nunca lança.
+ */
+export async function getPersistedSessions(projectRoot: string): Promise<PersistedSessionEntry[]> {
+  const sessions = (await appStore.get<PersistedSessionEntry[]>(SESSIONS_KEY)) ?? [];
+  return sessions.filter((session) => session.projectRoot === projectRoot);
+}

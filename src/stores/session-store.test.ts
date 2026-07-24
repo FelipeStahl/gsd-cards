@@ -35,13 +35,27 @@ vi.mock("../components/terminal/useTerminalActivity", () => ({
   wireTerminalActivity: (...args: unknown[]) => wireTerminalActivityMock(...args),
 }));
 
-// `renameSession` (SESS-05) persiste via `app-store.ts` — mockado no nível
+// `renameSession` (SESS-05) e `persistSnapshot`/`loadPersistedSessions`
+// (SESS-04, 04-06-PLAN.md) persistem via `app-store.ts` — mockado no nível
 // do módulo (mesmo padrão de `AppShell.test.tsx`) para que estas
 // suítes de ciclo de vida de sessão nunca façam uma chamada real de
 // `LazyStore`/plugin Tauri.
 const setSessionNameMock = vi.fn();
+const upsertPersistedSessionMock = vi.fn();
+const getPersistedSessionsMock = vi.fn();
 vi.mock("../persistence/app-store", () => ({
   setSessionName: (...args: unknown[]) => setSessionNameMock(...args),
+  upsertPersistedSession: (...args: unknown[]) => upsertPersistedSessionMock(...args),
+  getPersistedSessions: (...args: unknown[]) => getPersistedSessionsMock(...args),
+}));
+
+// `resumeSession` (SESS-04) carrega/grava o snapshot serializado via
+// `session-snapshot.ts` — mockado pelo mesmo motivo acima.
+const loadSnapshotMock = vi.fn();
+const saveSnapshotMock = vi.fn();
+vi.mock("../persistence/session-snapshot", () => ({
+  loadSnapshot: (...args: unknown[]) => loadSnapshotMock(...args),
+  saveSnapshot: (...args: unknown[]) => saveSnapshotMock(...args),
 }));
 
 const { useSessionStore, toSessionError } = await import("./session-store");
@@ -63,6 +77,10 @@ beforeEach(() => {
   activityStopMock.mockReset();
   wireTerminalActivityMock.mockReturnValue(activityStopMock);
   setSessionNameMock.mockReset().mockResolvedValue(undefined);
+  upsertPersistedSessionMock.mockReset().mockResolvedValue(undefined);
+  getPersistedSessionsMock.mockReset().mockResolvedValue([]);
+  loadSnapshotMock.mockReset().mockResolvedValue(null);
+  saveSnapshotMock.mockReset().mockResolvedValue(undefined);
 });
 
 function openProjectAt(root: string) {
@@ -77,6 +95,22 @@ function openProjectAt(root: string) {
 
 function fakeEntry(name: string) {
   return { name, isDirectory: false, isFile: true, isSymlink: false };
+}
+
+/** Insere um `SessionDescriptor` diretamente em `sessions[]`, sem passar
+ * pelo fluxo real de `createSession`/`discoverSessions` — usado pelas
+ * suítes de `resumeSession`/`persistSnapshot` (SESS-04) que precisam de
+ * uma sessão `historical`/`restored` já conhecida antes do teste agir. */
+function seedSession(overrides: Partial<import("./session-store").SessionDescriptor> = {}) {
+  useSessionStore.setState((state) => {
+    state.sessions.push({
+      id: "a1b2c3d4-e5f6-4789-a012-3456789abcde",
+      lastModified: new Date("2026-07-01T00:00:00Z"),
+      origin: "historical",
+      projectRoot: "/repo",
+      ...overrides,
+    });
+  });
 }
 
 describe("createSession", () => {
@@ -509,5 +543,195 @@ describe("discoverSessions (merge incremental — SESS-01)", () => {
     await expect(useSessionStore.getState().discoverSessions("/repo")).resolves.toBeUndefined();
     expect(useSessionStore.getState().sessions).toHaveLength(0);
     expect(readDirMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("resumeSession (SESS-04 — T-04-16 flag-injection guard)", () => {
+  it("recusa um id flag-shaped e NUNCA chama spawnSession (a asserção central T-04)", async () => {
+    await useSessionStore.getState().resumeSession("--dangerously-skip-permissions");
+
+    expect(spawnSessionMock).not.toHaveBeenCalled();
+    expect(useSessionStore.getState().error?.message).toContain("--dangerously-skip-permissions");
+  });
+
+  it("recusa um id flag-shaped mesmo quando uma sessão com esse id existe em sessions[]", async () => {
+    seedSession({ id: "-x" });
+
+    await useSessionStore.getState().resumeSession("-x");
+
+    expect(spawnSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("registra um erro e não spawna para um id desconhecido (não presente em sessions[])", async () => {
+    await useSessionStore.getState().resumeSession("a1b2c3d4-e5f6-4789-a012-3456789abcde");
+
+    expect(spawnSessionMock).not.toHaveBeenCalled();
+    expect(useSessionStore.getState().error?.message).toContain("Sessão desconhecida");
+  });
+
+  it("um id válido carrega o snapshot ANTES de spawnar, e spawna com args --resume e a PRÓPRIA projectRoot da sessão", async () => {
+    // `liveSessions` (channel de módulo, ver o topo de session-store.ts) NÃO
+    // é resetado entre testes — cada teste que passa pelo caminho de
+    // sucesso de `resumeSession` precisa de um id ÚNICO, senão colide com a
+    // marca "já viva" deixada por um teste anterior (idempotência).
+    seedSession({ id: "11111111-1111-4111-a111-111111111111", projectRoot: "/repo-da-sessao" });
+    loadSnapshotMock.mockResolvedValueOnce("snapshot serializado");
+    // O projeto ATIVO é diferente do dono da sessão — prova que resumeSession
+    // nunca usa activeProjectRoot (Pitfall 2 de 04-RESEARCH.md).
+    openProjectAt("/projeto-ativo-diferente");
+
+    await useSessionStore.getState().resumeSession("11111111-1111-4111-a111-111111111111");
+
+    expect(loadSnapshotMock).toHaveBeenCalledWith("11111111-1111-4111-a111-111111111111");
+    expect(spawnSessionMock).toHaveBeenCalledWith(
+      "11111111-1111-4111-a111-111111111111",
+      "/repo-da-sessao",
+      expect.any(Function),
+      ["--resume", "11111111-1111-4111-a111-111111111111"],
+    );
+  });
+
+  it("grava o snapshot carregado em liveSession.serializedSnapshot ANTES da chamada a spawnSession (ordem exigida pelo backstop de rehidratação)", async () => {
+    seedSession({ id: "22222222-2222-4222-a222-222222222222" });
+    const order: string[] = [];
+    loadSnapshotMock.mockImplementationOnce(async () => {
+      order.push("loadSnapshot");
+      return "snapshot antigo";
+    });
+    spawnSessionMock.mockImplementationOnce(async () => {
+      order.push("spawnSession");
+    });
+
+    await useSessionStore.getState().resumeSession("22222222-2222-4222-a222-222222222222");
+
+    expect(order).toEqual(["loadSnapshot", "spawnSession"]);
+    const liveSession = useSessionStore
+      .getState()
+      .getOrCreateLiveSession("22222222-2222-4222-a222-222222222222");
+    expect(liveSession.serializedSnapshot).toBe("snapshot antigo");
+  });
+
+  it("marca activeSessionId/lastFocusedSessionId e promove origin para live após retomar com sucesso", async () => {
+    seedSession({ id: "33333333-3333-4333-a333-333333333333", origin: "restored" });
+
+    await useSessionStore.getState().resumeSession("33333333-3333-4333-a333-333333333333");
+
+    const state = useSessionStore.getState();
+    expect(state.activeSessionId).toBe("33333333-3333-4333-a333-333333333333");
+    expect(state.lastFocusedSessionId).toBe("33333333-3333-4333-a333-333333333333");
+    expect(state.sessions[0].origin).toBe("live");
+  });
+
+  it("id sem snapshot persistido (loadSnapshot devolve null) ainda spawna normalmente", async () => {
+    seedSession({ id: "44444444-4444-4444-a444-444444444444" });
+    loadSnapshotMock.mockResolvedValueOnce(null);
+
+    await useSessionStore.getState().resumeSession("44444444-4444-4444-a444-444444444444");
+
+    expect(spawnSessionMock).toHaveBeenCalled();
+    const liveSession = useSessionStore
+      .getState()
+      .getOrCreateLiveSession("44444444-4444-4444-a444-444444444444");
+    expect(liveSession.serializedSnapshot).toBeNull();
+  });
+
+  it("wireia a classificação de atividade (ACT-03) ao retomar, mesma disciplina de createSession", async () => {
+    seedSession({ id: "55555555-5555-4555-a555-555555555555" });
+
+    await useSessionStore.getState().resumeSession("55555555-5555-4555-a555-555555555555");
+
+    expect(wireTerminalActivityMock).toHaveBeenCalledWith(
+      "55555555-5555-4555-a555-555555555555",
+      expect.any(Function),
+    );
+  });
+
+  it("uma sessão já viva (hasLiveSession) só refoca — nunca spawna de novo (idempotência)", async () => {
+    seedSession({ id: "66666666-6666-4666-a666-666666666666" });
+    useSessionStore.getState().getOrCreateLiveSession("66666666-6666-4666-a666-666666666666");
+
+    await useSessionStore.getState().resumeSession("66666666-6666-4666-a666-666666666666");
+
+    expect(spawnSessionMock).not.toHaveBeenCalled();
+    expect(loadSnapshotMock).not.toHaveBeenCalled();
+    expect(useSessionStore.getState().activeSessionId).toBe("66666666-6666-4666-a666-666666666666");
+  });
+});
+
+describe("loadPersistedSessions (SESS-04)", () => {
+  it("faz merge de sessões persistidas como origin restored, escopadas ao projectRoot pedido", async () => {
+    getPersistedSessionsMock.mockResolvedValueOnce([
+      { id: "session-x", projectRoot: "/repo", name: "Meu terminal", lastActive: "2026-07-24T10:00:00.000Z" },
+    ]);
+
+    await useSessionStore.getState().loadPersistedSessions("/repo");
+
+    expect(getPersistedSessionsMock).toHaveBeenCalledWith("/repo");
+    const state = useSessionStore.getState();
+    expect(state.sessions).toHaveLength(1);
+    expect(state.sessions[0]).toMatchObject({
+      id: "session-x",
+      origin: "restored",
+      projectRoot: "/repo",
+      name: "Meu terminal",
+    });
+  });
+
+  it("nunca spawna um PtySession — restauração é lazy", async () => {
+    getPersistedSessionsMock.mockResolvedValueOnce([
+      { id: "session-x", projectRoot: "/repo", lastActive: "2026-07-24T10:00:00.000Z" },
+    ]);
+
+    await useSessionStore.getState().loadPersistedSessions("/repo");
+
+    expect(spawnSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("nunca rebaixa uma sessão já conhecida (live/historical) para restored", async () => {
+    openProjectAt("/repo");
+    const liveId = useSessionStore.getState().createSession() as string;
+    getPersistedSessionsMock.mockResolvedValueOnce([
+      { id: liveId, projectRoot: "/repo", lastActive: "2026-07-24T10:00:00.000Z" },
+    ]);
+
+    await useSessionStore.getState().loadPersistedSessions("/repo");
+
+    const state = useSessionStore.getState();
+    expect(state.sessions).toHaveLength(1);
+    expect(state.sessions[0].origin).toBe("live");
+  });
+
+  it("degrada silenciosamente (sem lançar, sem sessões novas) quando a leitura do disco falha", async () => {
+    getPersistedSessionsMock.mockRejectedValueOnce(new Error("plugin-store indisponível"));
+
+    await expect(useSessionStore.getState().loadPersistedSessions("/repo")).resolves.toBeUndefined();
+    expect(useSessionStore.getState().sessions).toHaveLength(0);
+  });
+});
+
+describe("persistSnapshot (SESS-04)", () => {
+  it("chama saveSnapshot com o id e o snapshot recebidos", () => {
+    seedSession({ id: "session-y", projectRoot: "/repo" });
+
+    useSessionStore.getState().persistSnapshot("session-y", "conteúdo serializado");
+
+    expect(saveSnapshotMock).toHaveBeenCalledWith("session-y", "conteúdo serializado");
+  });
+
+  it("chama upsertPersistedSession com id/projectRoot/name/lastActive da sessão", () => {
+    seedSession({ id: "session-y", projectRoot: "/repo", name: "Meu terminal" });
+
+    useSessionStore.getState().persistSnapshot("session-y", "conteúdo serializado");
+
+    expect(upsertPersistedSessionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "session-y", projectRoot: "/repo", name: "Meu terminal" }),
+    );
+  });
+
+  it("é um no-op seguro (nunca chama saveSnapshot/upsertPersistedSession) para um id desconhecido", () => {
+    useSessionStore.getState().persistSnapshot("sessao-inexistente", "x");
+
+    expect(saveSnapshotMock).not.toHaveBeenCalled();
+    expect(upsertPersistedSessionMock).not.toHaveBeenCalled();
   });
 });

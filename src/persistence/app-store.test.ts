@@ -35,7 +35,14 @@ vi.mock("@tauri-apps/plugin-store", () => ({
   LazyStore: FakeLazyStore,
 }));
 
-const { upsertRecent, getRecents, removeRecent, appStore } = await import("./app-store");
+const {
+  upsertRecent,
+  getRecents,
+  removeRecent,
+  upsertPersistedSession,
+  getPersistedSessions,
+  appStore,
+} = await import("./app-store");
 
 beforeEach(() => {
   (appStore as unknown as FakeLazyStore).data.clear();
@@ -93,5 +100,39 @@ describe("app-store", () => {
 
     await expect(removeRecent("/projects/inexistente")).resolves.toBeUndefined();
     expect((await getRecents()).map((r) => r.root)).toEqual(["/projects/a"]);
+  });
+});
+
+describe("app-store — metadados de sessão persistidos (SESS-04, 04-06-PLAN.md)", () => {
+  it("getPersistedSessions devolve [] quando nada foi persistido ainda", async () => {
+    expect(await getPersistedSessions("/repo")).toEqual([]);
+  });
+
+  it("upsertPersistedSession então getPersistedSessions(mesmo projectRoot) devolve a entrada", async () => {
+    await upsertPersistedSession({
+      id: "session-a",
+      projectRoot: "/repo",
+      lastActive: "2026-07-24T10:00:00.000Z",
+    });
+
+    expect(await getPersistedSessions("/repo")).toEqual([
+      { id: "session-a", projectRoot: "/repo", lastActive: "2026-07-24T10:00:00.000Z" },
+    ]);
+  });
+
+  it("getPersistedSessions filtra por projectRoot — sessão de outro projeto não aparece", async () => {
+    await upsertPersistedSession({ id: "session-a", projectRoot: "/repo-a", lastActive: "2026-07-24T10:00:00.000Z" });
+    await upsertPersistedSession({ id: "session-b", projectRoot: "/repo-b", lastActive: "2026-07-24T10:00:00.000Z" });
+
+    expect((await getPersistedSessions("/repo-a")).map((s) => s.id)).toEqual(["session-a"]);
+  });
+
+  it("re-upsertar o mesmo id atualiza a entrada sem duplicar", async () => {
+    await upsertPersistedSession({ id: "session-a", projectRoot: "/repo", lastActive: "2026-07-24T10:00:00.000Z" });
+    await upsertPersistedSession({ id: "session-a", projectRoot: "/repo", lastActive: "2026-07-24T11:00:00.000Z" });
+
+    const sessions = await getPersistedSessions("/repo");
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0].lastActive).toBe("2026-07-24T11:00:00.000Z");
   });
 });

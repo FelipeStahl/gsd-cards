@@ -22,8 +22,15 @@ import { wireTerminalActivity } from "../components/terminal/useTerminalActivity
 import { killSession as killSessionProcess, spawnSession, writeSession } from "../pty/channel";
 import type { TerminalActivity } from "../pty/activity";
 import { listSessions, type SessionSignal } from "../sessions/discover";
+import { isValidSessionId } from "../sessions/id-format";
+import { loadSnapshot, saveSnapshot } from "../persistence/session-snapshot";
 import { useBoardStore } from "./board-store";
-import { setSessionName } from "../persistence/app-store";
+import {
+  getPersistedSessions,
+  setSessionName,
+  upsertPersistedSession,
+  type PersistedSessionEntry,
+} from "../persistence/app-store";
 
 /**
  * Estado de foco/background por sessão (SESS-03) — `serializedSnapshot` +
@@ -67,13 +74,17 @@ export interface SessionError {
   message: string;
 }
 
-export type SessionOrigin = "live" | "historical";
+export type SessionOrigin = "live" | "historical" | "restored";
 
 /**
  * Uma sessão conhecida pelo store — `live` (criada nesta execução do app,
- * via `createSession`) ou `historical` (descoberta via `.jsonl` no disco,
- * sem `PtySession` viva a rastreá-la). Nunca a mesma sessão em ambos os
- * grupos ao mesmo tempo — ver `mergeSessionDescriptors`.
+ * via `createSession`, OU retomada com sucesso via `resumeSession`),
+ * `historical` (descoberta via `.jsonl` no disco, sem `PtySession` viva a
+ * rastreá-la) ou `restored` (SESS-04, 04-06-PLAN.md: metadado persistido em
+ * `app-state.json` de uma execução anterior, carregado por
+ * `loadPersistedSessions` — igualmente sem `PtySession` viva até o usuário
+ * clicar a row e `resumeSession` promovê-la para `live`). Nunca a mesma
+ * sessão em mais de um grupo ao mesmo tempo — ver `mergeSessionDescriptors`.
  */
 export interface SessionDescriptor {
   id: string;
@@ -160,6 +171,48 @@ interface SessionStoreState {
    * um contexto Tauri real, ou projeto sem `.claude/projects/` ainda).
    */
   discoverSessions: (projectRoot: string) => Promise<void>;
+  /**
+   * Carrega os metadados de sessão persistidos (SESS-04, 04-06-PLAN.md) de
+   * `app-state.json` para `projectRoot` e faz merge incremental em
+   * `sessions[]` como `origin:"restored"` — NUNCA spawna um `PtySession`
+   * (a restauração é lazy: só `resumeSession` faz isso, sob clique
+   * explícito do usuário). Uma sessão já conhecida (live/historical/
+   * restored de uma chamada anterior) nunca é rebaixada/sobrescrita — mesma
+   * disciplina de `mergeSessionDescriptors`. Nunca lança — degrada
+   * silenciosamente se a leitura do disco falhar.
+   */
+  loadPersistedSessions: (projectRoot: string) => Promise<void>;
+  /**
+   * Retoma uma sessão histórica/restaurada (SESS-04) — o ÚNICO call site
+   * que monta `["--resume", sessionId]` para `spawnSession`. Ordem
+   * inegociável: (1) `isValidSessionId` — um id flag-shaped é recusado e
+   * NUNCA alcança `spawnSession`/`invoke` (T-04-16, guarda de
+   * flag-injection); (2) usa a PRÓPRIA `projectRoot` persistida da sessão
+   * como cwd — nunca `activeProjectRoot`/o projeto atualmente aberto
+   * (Pitfall 2 de 04-RESEARCH.md); (3) `loadSnapshot` do disco e grava em
+   * `liveSession.serializedSnapshot` ANTES de `activeSessionId` mudar — o
+   * único gatilho que faz `TerminalView` montar/chamar `gainFocus` para
+   * esta sessão, garantindo por construção que o snapshot já esteja
+   * disponível quando o check síncrono existente de `gainFocus`
+   * (SESS-03/focus-algorithm.ts) o escreve no xterm recém-montado, antes
+   * de qualquer byte real do `--resume` chegar (backstop de
+   * 04-06-PLAN.md). Idempotente: uma sessão já viva nesta execução só é
+   * refocada, nunca re-spawnada.
+   */
+  resumeSession: (sessionId: string) => Promise<void>;
+  /**
+   * Persiste em disco o snapshot serializado de uma sessão ao perder foco
+   * (SESS-04) — chamado por `TerminalView`/`focus-algorithm.ts`'s
+   * `loseFocus`, estendendo o fluxo em memória do SESS-03 (nunca o
+   * substituindo). Grava o snapshot em `session-<id>.json`
+   * (`persistence/session-snapshot.ts`) e atualiza o metadado pequeno
+   * (`id`, `projectRoot`, `name`, `lastActive`) em `app-state.json` — os
+   * dois arquivos que `loadPersistedSessions`/`resumeSession` leem de
+   * volta na próxima abertura do app. Fire-and-forget, mesma disciplina de
+   * `renameSession`/`upsertRecent` — a UI nunca espera o disco, e um id
+   * desconhecido (sessão já removida de `sessions[]`) é um no-op seguro.
+   */
+  persistSnapshot: (sessionId: string, snapshot: string) => void;
   setError: (error: SessionError | null) => void;
   /**
    * Atualiza `SessionDescriptor.activity` (ACT-03) — TRANSITION-GATED: só
@@ -385,6 +438,136 @@ export const useSessionStore = create<SessionStoreState>()(
       set((state) => {
         state.sessions = mergeSessionDescriptors(state.sessions, discovered, projectRoot);
       });
+    },
+
+    loadPersistedSessions: async (projectRoot: string) => {
+      let persisted: PersistedSessionEntry[];
+      try {
+        persisted = await getPersistedSessions(projectRoot);
+      } catch {
+        // Falha de leitura do plugin-store (fora de um contexto Tauri real,
+        // ou primeira execução sem app-state.json ainda) — degrada sem
+        // sessões restauradas, mesma disciplina de `discoverSessions`.
+        return;
+      }
+
+      if (persisted.length === 0) return;
+
+      set((state) => {
+        for (const entry of persisted) {
+          // Uma sessão já conhecida (live desta execução, ou historical/
+          // restored de uma chamada anterior) nunca é rebaixada/duplicada —
+          // mesmo invariante de `mergeSessionDescriptors`.
+          if (state.sessions.some((session) => session.id === entry.id)) continue;
+          state.sessions.push({
+            id: entry.id,
+            lastModified: entry.lastActive ? new Date(entry.lastActive) : null,
+            origin: "restored",
+            projectRoot: entry.projectRoot,
+            name: entry.name,
+          });
+        }
+      });
+    },
+
+    resumeSession: async (sessionId: string) => {
+      // T-04-16: valida o FORMATO do id antes de qualquer outra coisa —
+      // inclusive antes de procurar a sessão em `sessions[]` — para que a
+      // recusa nunca dependa de o descriptor existir ou não. Um id
+      // flag-shaped nunca alcança `spawnSession`/`invoke`.
+      if (!isValidSessionId(sessionId)) {
+        set((state) => {
+          state.error = toSessionError(
+            new Error(`Recusando --resume: id de sessão em formato inesperado (${sessionId})`),
+          );
+        });
+        return;
+      }
+
+      const session = get().sessions.find((candidate) => candidate.id === sessionId);
+      if (!session) {
+        set((state) => {
+          state.error = toSessionError(new Error(`Sessão desconhecida: ${sessionId}`));
+        });
+        return;
+      }
+
+      if (get().hasLiveSession(sessionId)) {
+        // Já retomada/viva nesta execução (re-clique numa row já em
+        // "starting"/já ativa, ou o call site de segurança em
+        // `TerminalView` caindo aqui depois do clique já ter disparado
+        // tudo) — só refoca, nunca spawna de novo.
+        set((state) => {
+          state.activeSessionId = sessionId;
+          state.lastFocusedSessionId = sessionId;
+        });
+        return;
+      }
+
+      set((state) => {
+        state.error = null;
+      });
+
+      if (!activityStops.has(sessionId)) {
+        activityStops.set(
+          sessionId,
+          wireTerminalActivity(sessionId, (activity) => {
+            get().setActivity(sessionId, activity);
+          }),
+        );
+      }
+
+      // Registra o LiveSessionState (idempotência acima) e carrega o
+      // snapshot ANTES de `activeSessionId` mudar abaixo — `activeSessionId`
+      // é o ÚNICO gatilho que faz `TerminalView` montar/chamar `gainFocus`
+      // para esta sessão, então por construção o snapshot já está
+      // disponível quando o check síncrono existente de `gainFocus`
+      // (SESS-03/focus-algorithm.ts) o escreve no xterm recém-montado —
+      // nunca uma corrida com os bytes reais do `--resume`, que só chegam
+      // depois de um round-trip de IPC real (spawnSession abaixo), ordens
+      // de magnitude mais lento que este `set()` síncrono.
+      const liveSession = get().getOrCreateLiveSession(sessionId);
+      const snapshot = await loadSnapshot(sessionId).catch(() => null);
+      if (snapshot !== null) {
+        liveSession.serializedSnapshot = snapshot;
+      }
+
+      set((state) => {
+        state.activeSessionId = sessionId;
+        state.lastFocusedSessionId = sessionId;
+        // Uma sessão retomada com sucesso passa a ter um PtySession vivo de
+        // verdade — nunca mais "historical"/"restored" (ambos significam
+        // exatamente "sem PtySession viva"), promovida para "live" como
+        // qualquer sessão criada nesta execução.
+        const descriptor = state.sessions.find((candidate) => candidate.id === sessionId);
+        if (descriptor) descriptor.origin = "live";
+      });
+
+      // Pitfall 2 (04-RESEARCH.md): usa a PRÓPRIA `projectRoot` persistida
+      // da sessão como cwd — NUNCA `activeProjectRoot`/o projeto
+      // atualmente aberto, que pode ser um projeto diferente do dono desta
+      // sessão (PROJ-05 mantém múltiplos projetos abertos ao mesmo tempo).
+      await spawnSession(sessionId, session.projectRoot, () => {}, ["--resume", sessionId]);
+    },
+
+    persistSnapshot: (sessionId: string, snapshot: string) => {
+      const session = get().sessions.find((candidate) => candidate.id === sessionId);
+      // Sessão já removida de `sessions[]` (arquivada/excluída) entre o
+      // agendamento do lose-focus e este callback rodar — no-op seguro,
+      // nunca persiste um snapshot órfão sem `projectRoot` para escopá-lo.
+      if (!session) return;
+
+      void saveSnapshot(sessionId, snapshot).catch(() => {
+        // Persistência é conveniência (sobrevive a reaberturas), nunca a
+        // fonte de verdade em memória desta execução — mesma disciplina de
+        // `renameSession`.
+      });
+      void upsertPersistedSession({
+        id: sessionId,
+        projectRoot: session.projectRoot,
+        name: session.name,
+        lastActive: new Date().toISOString(),
+      }).catch(() => {});
     },
 
     setError: (error: SessionError | null) => {
