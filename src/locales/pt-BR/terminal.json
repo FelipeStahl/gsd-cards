@@ -14,6 +14,16 @@
   "chrome": {
     "exitedBanner": "Sessão encerrada"
   },
+  "notification": {
+    "awaiting": {
+      "title": "Claude precisa de você",
+      "body": "A sessão {{sessionLabel}} está aguardando sua permissão."
+    },
+    "exited": {
+      "title": "Sessão encerrada",
+      "body": "A sessão {{sessionLabel}} terminou."
+    }
+  },
   "activity": {
     "idle": "Ocioso",
     "busy": "Ocupado",

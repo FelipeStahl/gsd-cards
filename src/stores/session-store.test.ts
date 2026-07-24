@@ -8,6 +8,13 @@ const spawnSessionMock = vi.fn();
 const writeSessionMock = vi.fn();
 const wireTerminalActivityMock = vi.fn();
 const activityStopMock = vi.fn();
+// TERM-04 (04-07-PLAN.md): `wireSessionExitListener` (chamado explicitamente
+// pela `SessionSidebar` a cada abertura de projeto, NUNCA um efeito colateral
+// de import do módulo) delega para `channel.ts`'s `listenForSessionExit` —
+// mockado aqui para nunca acionar o `listen`/`@tauri-apps/api/event` real
+// fora de um contexto Tauri, e para capturar o callback registrado (asserido
+// pela suíte `markExited` abaixo).
+const listenForSessionExitMock = vi.fn();
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invokeMock(...args),
@@ -22,6 +29,18 @@ vi.mock("../pty/channel", () => ({
   killSession: (...args: unknown[]) => killSessionProcessMock(...args),
   spawnSession: (...args: unknown[]) => spawnSessionMock(...args),
   writeSession: (...args: unknown[]) => writeSessionMock(...args),
+  listenForSessionExit: (...args: unknown[]) => listenForSessionExitMock(...args),
+}));
+
+// `setActivity`/`markExited` (TERM-04, 04-07-PLAN.md) disparam
+// `notifyAwaiting`/`notifyExited` — mockado no nível do módulo pelo mesmo
+// motivo de `app-store`/`session-snapshot` acima: nunca exercitar o plugin
+// real de notificação fora de um contexto Tauri.
+const notifyAwaitingMock = vi.fn();
+const notifyExitedMock = vi.fn();
+vi.mock("../notifications/notify", () => ({
+  notifyAwaiting: (...args: unknown[]) => notifyAwaitingMock(...args),
+  notifyExited: (...args: unknown[]) => notifyExitedMock(...args),
 }));
 
 // CR-01: `createSession` now wires ACT-03 activity classification directly
@@ -81,6 +100,9 @@ beforeEach(() => {
   getPersistedSessionsMock.mockReset().mockResolvedValue([]);
   loadSnapshotMock.mockReset().mockResolvedValue(null);
   saveSnapshotMock.mockReset().mockResolvedValue(undefined);
+  listenForSessionExitMock.mockReset().mockResolvedValue(undefined);
+  notifyAwaitingMock.mockReset().mockResolvedValue(undefined);
+  notifyExitedMock.mockReset().mockResolvedValue(undefined);
 });
 
 function openProjectAt(root: string) {
@@ -428,6 +450,93 @@ describe("setActivity (ACT-03 — transition-gated)", () => {
     expect(
       useSessionStore.getState().sessions.find((s) => s.id === "sessao-inexistente"),
     ).toBeUndefined();
+  });
+
+  it("TERM-04: transição idle/busy->awaiting dispara notifyAwaiting exatamente uma vez", () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+    useSessionStore.getState().setActivity(id, "busy");
+    notifyAwaitingMock.mockClear();
+
+    useSessionStore.getState().setActivity(id, "awaiting");
+
+    expect(notifyAwaitingMock).toHaveBeenCalledTimes(1);
+    expect(notifyAwaitingMock).toHaveBeenCalledWith(expect.stringContaining(id.slice(0, 8)));
+  });
+
+  it("chamar setActivity com o MESMO valor awaiting duas vezes não repete notifyAwaiting (transition-gated)", () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+    useSessionStore.getState().setActivity(id, "awaiting");
+    notifyAwaitingMock.mockClear();
+
+    useSessionStore.getState().setActivity(id, "awaiting");
+
+    expect(notifyAwaitingMock).not.toHaveBeenCalled();
+  });
+
+  it("transições para busy/idle nunca chamam notifyAwaiting", () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+
+    useSessionStore.getState().setActivity(id, "busy");
+    useSessionStore.getState().setActivity(id, "idle");
+
+    expect(notifyAwaitingMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("wireSessionExitListener (TERM-04, 04-07-PLAN.md)", () => {
+  it("registra o callback via listenForSessionExit — roteando o sessionId recebido para markExited", () => {
+    seedSession({ id: "session-exit-1", origin: "live" });
+
+    useSessionStore.getState().wireSessionExitListener();
+
+    expect(listenForSessionExitMock).toHaveBeenCalledWith(expect.any(Function));
+    const [onExit] = listenForSessionExitMock.mock.calls[0] as [(sessionId: string) => void];
+    onExit("session-exit-1");
+
+    const session = useSessionStore.getState().sessions.find((s) => s.id === "session-exit-1");
+    expect(session?.exited).toBe(true);
+    expect(notifyExitedMock).toHaveBeenCalledWith(expect.stringContaining("session-"));
+  });
+
+  it("é um no-op seguro (nunca lança) mesmo quando listenForSessionExit rejeita (fora de um contexto Tauri real)", async () => {
+    listenForSessionExitMock.mockRejectedValueOnce(new Error("sem runtime Tauri"));
+
+    expect(() => useSessionStore.getState().wireSessionExitListener()).not.toThrow();
+    // Deixa a microtask do `.catch()` interno resolver antes de terminar o teste.
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+});
+
+describe("markExited (TERM-04, 04-07-PLAN.md)", () => {
+
+  it("markExited nunca rebaixa origin — uma sessão live que sai permanece live", () => {
+    seedSession({ id: "session-exit-2", origin: "live" });
+
+    useSessionStore.getState().markExited("session-exit-2");
+
+    const session = useSessionStore.getState().sessions.find((s) => s.id === "session-exit-2");
+    expect(session?.origin).toBe("live");
+    expect(session?.exited).toBe(true);
+  });
+
+  it("é um no-op seguro (nunca chama notifyExited) para um id de sessão desconhecido", () => {
+    useSessionStore.getState().markExited("sessao-inexistente");
+
+    expect(notifyExitedMock).not.toHaveBeenCalled();
+  });
+
+  it("é TRANSITION-GATED — marcar uma sessão já exited de novo não repete notifyExited", () => {
+    seedSession({ id: "session-exit-3", origin: "live" });
+    useSessionStore.getState().markExited("session-exit-3");
+    notifyExitedMock.mockClear();
+
+    useSessionStore.getState().markExited("session-exit-3");
+
+    expect(notifyExitedMock).not.toHaveBeenCalled();
   });
 });
 

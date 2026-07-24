@@ -19,11 +19,18 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { createLiveSessionState, type LiveSessionState } from "../components/terminal/focus-algorithm";
 import { wireTerminalActivity } from "../components/terminal/useTerminalActivity";
-import { killSession as killSessionProcess, spawnSession, writeSession } from "../pty/channel";
+import {
+  killSession as killSessionProcess,
+  listenForSessionExit,
+  spawnSession,
+  writeSession,
+} from "../pty/channel";
 import type { TerminalActivity } from "../pty/activity";
 import { listSessions, type SessionSignal } from "../sessions/discover";
 import { isValidSessionId } from "../sessions/id-format";
 import { loadSnapshot, saveSnapshot } from "../persistence/session-snapshot";
+import { notifyAwaiting, notifyExited } from "../notifications/notify";
+import { i18n } from "../i18n";
 import { useBoardStore } from "./board-store";
 import {
   getPersistedSessions,
@@ -114,6 +121,32 @@ export interface SessionDescriptor {
    * `app-store.ts` (`setSessionName`), nunca em `.planning/`.
    */
   name?: string;
+  /**
+   * `true` quando o evento global `pty:session-exited` (04-02) foi
+   * observado para esta sessão (TERM-04, 04-07-PLAN.md) — o processo saiu
+   * naturalmente, crashou, ou um `--resume` falhou (Pitfall 3 de
+   * 04-RESEARCH.md, mesmo sinal). `undefined`/`false` até então. Nunca
+   * rebaixa `origin` — uma sessão `live` que sai permanece `live` (02-UI-SPEC.md:
+   * "exited-this-run" continua no grupo "Ativas" da sidebar, só com a
+   * variante/dot visual mudando via `markExited`), nunca migra para
+   * `historical`. Consumido por `SessionSidebar` (variant="exited") e pelo
+   * badge de prioridade do `DrawerRail`.
+   */
+  exited?: boolean;
+}
+
+/**
+ * Deriva o label de exibição de uma sessão (mesmo cálculo de
+ * `SessionRow.tsx`'s `derivedLabel`) para as chamadas de `notifyAwaiting`/
+ * `notifyExited` — nome customizado (SESS-05) se houver, senão
+ * `"Sessão " + id.slice(0,8)` traduzido via `session.row.labelPrefix`. Único
+ * ponto que resolve isso fora de um componente React (`notify.ts` recebe só
+ * o label já pronto, nunca um `SessionDescriptor` cru).
+ */
+function deriveSessionLabel(session: SessionDescriptor): string {
+  if (session.name) return session.name;
+  const prefix = i18n.t("row.labelPrefix", { ns: "session" });
+  return `${prefix} ${session.id.slice(0, 8)}`;
 }
 
 interface SessionStoreState {
@@ -233,6 +266,27 @@ interface SessionStoreState {
    * `upsertRecent` em `board-store.ts`) — a UI nunca espera o disco.
    */
   renameSession: (sessionId: string, name: string) => void;
+  /**
+   * Marca uma sessão como `exited` (TERM-04, 04-07-PLAN.md) — chamado pelo
+   * callback registrado por `wireSessionExitListener` abaixo.
+   * TRANSITION-GATED como `setActivity`: no-op para um id desconhecido OU já
+   * marcado como `exited` (o evento nunca deveria repetir para o mesmo id,
+   * mas a guarda cobre defensivamente). Nunca rebaixa `origin` — só liga a
+   * flag `exited`. Dispara `notifyExited` (fire-and-forget, degrade-silently
+   * já garantido por `notify.ts`) com o label derivado da sessão.
+   */
+  markExited: (sessionId: string) => void;
+  /**
+   * Wireia (idempotentemente) o listener do evento global `pty:session-exited`
+   * (04-02) para `markExited` acima (TERM-04, 04-07-PLAN.md). Chamado por
+   * `SessionSidebar` a cada abertura/reabertura de projeto — NÃO um efeito
+   * colateral de import do módulo (calling this eagerly at module-load broke
+   * every test file that transitively imports `session-store.ts` without
+   * mocking `../pty/channel`'s `listenForSessionExit`, incluindo suítes que
+   * nunca renderizam sessão alguma). Nunca lança — degrada silenciosamente
+   * fora de um contexto Tauri real (`.catch()` na implementação).
+   */
+  wireSessionExitListener: () => void;
 }
 
 /** Normaliza qualquer erro (tagged `{ kind, message }` vindo do Rust, ou um `Error`/valor desconhecido) para `SessionError`. Mesmo padrão de `toStoreError` em `board-store.ts`. */
@@ -592,6 +646,34 @@ export const useSessionStore = create<SessionStoreState>()(
         const descriptor = state.sessions.find((session) => session.id === sessionId);
         if (descriptor) descriptor.activity = activity;
       });
+
+      // TERM-04 (04-07-PLAN.md): dispara o toast do SO exatamente na
+      // TRANSIÇÃO idle/busy->awaiting — o guard acima (`current.activity ===
+      // activity`) já garante que isto só roda uma vez por transição, nunca
+      // por byte repetido enquanto a sessão permanece awaiting. Nenhum
+      // debounce extra é necessário (04-CONTEXT.md Claude's Discretion,
+      // resolvido em 04-07-PLAN.md `planner_assumptions`). Fire-and-forget —
+      // `notify.ts` já degrada silenciosamente, nunca lança aqui.
+      if (activity === "awaiting") {
+        void notifyAwaiting(deriveSessionLabel(current));
+      }
+    },
+
+    markExited: (sessionId: string) => {
+      const current = get().sessions.find((session) => session.id === sessionId);
+      // No-op para um id desconhecido OU já marcado como exited — mesma
+      // disciplina TRANSITION-GATED de setActivity acima.
+      if (!current || current.exited) return;
+
+      set((state) => {
+        const descriptor = state.sessions.find((session) => session.id === sessionId);
+        if (descriptor) descriptor.exited = true;
+      });
+
+      // Fire-and-forget, mesma disciplina de notifyAwaiting acima — o badge
+      // em app (já atualizado pelo set() acima) é o contrato durável,
+      // independente do resultado desta chamada.
+      void notifyExited(deriveSessionLabel(current));
     },
 
     renameSession: (sessionId: string, name: string) => {
@@ -617,6 +699,25 @@ export const useSessionStore = create<SessionStoreState>()(
         // Persistência é conveniência (sobrevive a reaberturas), nunca a
         // fonte de verdade em memória desta execução.
       });
+    },
+
+    wireSessionExitListener: () => {
+      // TERM-04 (04-07-PLAN.md): roteia o evento global `pty:session-exited`
+      // (04-02) para `markExited`, independente de qual `projectRoot` a
+      // sessão pertence (o sessionId sozinho já basta para localizar o
+      // descriptor em `sessions[]`). Chamado por `SessionSidebar` no MESMO
+      // `useEffect` que já dispara `discoverSessions`/`loadPersistedSessions`
+      // a cada abertura/reabertura de projeto ("wire ... once at store
+      // init/project-open"). `channel.ts::listenForSessionExit` já derruba
+      // qualquer listener anterior antes de registrar um novo (mesma
+      // disciplina de `watch.ts::startWatching`), então chamar isto de novo
+      // a cada projeto aberto só re-registra o mesmo callback, nunca
+      // acumula assinaturas duplicadas — nenhuma guarda extra é necessária
+      // aqui. `.catch()` degrada silenciosamente fora de um contexto Tauri
+      // real (mesma disciplina de `discoverSessions`/`checkClaudeOnPath`).
+      void listenForSessionExit((sessionId) => {
+        get().markExited(sessionId);
+      }).catch(() => {});
     },
   })),
 );

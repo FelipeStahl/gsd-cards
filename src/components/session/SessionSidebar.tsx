@@ -70,6 +70,13 @@ export function SessionSidebar() {
   const discoverSessions = useSessionStore((state) => state.discoverSessions);
   const loadPersistedSessions = useSessionStore((state) => state.loadPersistedSessions);
   const resumeSession = useSessionStore((state) => state.resumeSession);
+  // TERM-04 (04-07-PLAN.md): não listado em `files_modified` de
+  // 04-07-PLAN.md, mas exigido pelo próprio `## Component Inventory` do
+  // UI-SPEC ("SessionSidebar — extended") para que `markExited` alcance
+  // qualquer sessão de verdade — sem isto, `wireSessionExitListener` nunca é
+  // chamado e `pty:session-exited` nunca chega ao store (Rule 2 deviation,
+  // mesmo padrão de `loadPersistedSessions`/`resumeSession` em 04-06-PLAN.md).
+  const wireSessionExitListener = useSessionStore((state) => state.wireSessionExitListener);
 
   // Claude CLI (checagem GLOBAL, independente de projeto): só na primeira
   // montagem da sidebar (app boot), nunca por projeto.
@@ -97,8 +104,14 @@ export function SessionSidebar() {
     if (projectRoot) {
       void discoverSessions(projectRoot);
       void loadPersistedSessions(projectRoot);
+      // TERM-04: mesmo `useEffect` de abertura/reabertura de projeto — o
+      // listener singleton de `pty:session-exited` (`channel.ts`) já se
+      // auto-substitui a cada chamada (nunca acumula), então re-wireá-lo
+      // aqui a cada projeto aberto é seguro e cobre o caso de múltiplos
+      // projetos abertos simultaneamente (PROJ-05) sem qualquer guarda extra.
+      wireSessionExitListener();
     }
-  }, [projectRoot, discoverSessions, loadPersistedSessions]);
+  }, [projectRoot, discoverSessions, loadPersistedSessions, wireSessionExitListener]);
 
   // Antes da primeira resolução de `checkClaudeOnPath` (`claudePath`
   // continua `undefined`), nunca afirma "ausente" preventivamente — só
@@ -188,7 +201,12 @@ export function SessionSidebar() {
                   <SessionRow
                     key={session.id}
                     session={session}
-                    variant="live"
+                    // TERM-04 (04-07-PLAN.md): uma sessão `live` cujo
+                    // `pty:session-exited` já foi observado (`markExited`)
+                    // permanece no grupo "Ativas" (02-UI-SPEC.md ##
+                    // Session Sidebar), só a variante do dot/sufixo muda —
+                    // nunca migra para "Histórico".
+                    variant={session.exited ? "exited" : "live"}
                     active={session.id === activeSessionId}
                     onSelect={focusSession}
                   />
