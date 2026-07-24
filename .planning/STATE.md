@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: casa-persistente
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-07-24T05:24:51.759Z"
+stopped_at: Completed 04-05-PLAN.md
+last_updated: "2026-07-24T05:42:30.417Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 26
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (casa-persistente) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-07-24 — Phase 04 execution started
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Progress: [█████████░] 88%
 | Phase 04 P02 | 10min | 2 tasks | 3 files |
 | Phase 04 P03 | 5min | 2 tasks | 7 files |
 | Phase 04 P04 | 15min | 3 tasks | 13 files |
+| Phase 04 P05 | 16min | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-04]: createProjectSession spawns the PTY directly (calls spawnSession itself) instead of createSession's lazy-spawn-on-TerminalView-mount pattern — no TerminalView mounts while view === 'home'
 - [Phase ?]: [Phase 04-04]: removeRecent() added to app-store.ts (Rule 2 deviation) — the plan's Task 2 action required the error card's 'Remover da lista' action to persist removal, but app-store.ts only exposed upsertRecent/getRecents
 - [Phase ?]: [Phase 04-04]: ProjectCard treats parseStateFile's overall 'unrecognized' result the same as a validateProjectRoot/read rejection — both degrade to the single non-clickable error card variant
+- [Phase ?]: [Phase 04-05]: RenameSessionControl reads renameSession from the store directly (sessionId prop + single onDone callback) instead of onConfirm/onCancel delegating through SessionRow — matches the plan's acceptance grep and keeps the store call co-located with the input
+- [Phase ?]: [Phase 04-05]: session name persistence (setSessionName/getSessionNames) added to app-store.ts under a sessionNames key — write-only this plan, rehydration on restore is 04-06's scope (SESS-04)
 
 ### Pending Todos
 
@@ -175,6 +178,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T05:24:51.742Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-07-24T05:42:30.396Z
+Stopped at: Completed 04-05-PLAN.md
 Resume file: None

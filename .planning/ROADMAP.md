@@ -147,7 +147,7 @@ Plans:
   4. Ao reabrir o app, as sessões são restauradas (snapshot do buffer + histórico via `claude --resume`, restauração lazy), comunicando visualmente que é histórico restaurado, não processo contínuo.
   5. Usuário renomeia sessões e é notificado (alerta do SO + badge na sidebar) quando uma sessão termina ou precisa de input.
 
-**Plans**: 4/7 plans executed
+**Plans**: 5/7 plans executed
 Plans:
 **Wave 1**
 
@@ -161,7 +161,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 04-05-PLAN.md — Escopo de sessão por projeto + renomear sessão (PROJ-05/SESS-05)
+- [x] 04-05-PLAN.md — Escopo de sessão por projeto + renomear sessão (PROJ-05/SESS-05)
 
 **Wave 4** *(blocked on Wave 3)*
 
@@ -198,5 +198,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Espelho fiel | 8/8 | In Progress|  |
 | 2. Sessão viva | 6/6 | In Progress|  |
 | 3. Board interativo | 5/5 | In Progress|  |
-| 4. Casa persistente | 4/7 | In Progress|  |
+| 4. Casa persistente | 5/7 | In Progress|  |
 | 5. Comunidade | 0/TBD | Not started | - |
