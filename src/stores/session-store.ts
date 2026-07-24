@@ -28,6 +28,7 @@ import {
 import type { TerminalActivity } from "../pty/activity";
 import { listSessions, type SessionSignal } from "../sessions/discover";
 import { isValidSessionId } from "../sessions/id-format";
+import { validateProjectRoot } from "../planning/read";
 import { loadSnapshot, saveSnapshot } from "../persistence/session-snapshot";
 import { notifyAwaiting, notifyExited } from "../notifications/notify";
 import { i18n } from "../i18n";
@@ -228,17 +229,26 @@ interface SessionStoreState {
    * que monta `["--resume", sessionId]` para `spawnSession`. Ordem
    * inegociável: (1) `isValidSessionId` — um id flag-shaped é recusado e
    * NUNCA alcança `spawnSession`/`invoke` (T-04-16, guarda de
-   * flag-injection); (2) usa a PRÓPRIA `projectRoot` persistida da sessão
-   * como cwd — nunca `activeProjectRoot`/o projeto atualmente aberto
-   * (Pitfall 2 de 04-RESEARCH.md); (3) `loadSnapshot` do disco e grava em
-   * `liveSession.serializedSnapshot` ANTES de `activeSessionId` mudar — o
-   * único gatilho que faz `TerminalView` montar/chamar `gainFocus` para
-   * esta sessão, garantindo por construção que o snapshot já esteja
-   * disponível quando o check síncrono existente de `gainFocus`
-   * (SESS-03/focus-algorithm.ts) o escreve no xterm recém-montado, antes
-   * de qualquer byte real do `--resume` chegar (backstop de
-   * 04-06-PLAN.md). Idempotente: uma sessão já viva nesta execução só é
-   * refocada, nunca re-spawnada.
+   * flag-injection); (2) WR-01 fix (04-REVIEW.md): re-valida a `projectRoot`
+   * PERSISTIDA da sessão via `validateProjectRoot` antes de usá-la como
+   * cwd — nunca confia direto no valor lido de `app-state.json` (um arquivo
+   * plaintext, localmente adulterável), mesmo portão que TODO outro
+   * consumidor de project-root já passa (`openProject`, `switchProject`,
+   * o health-check do `ProjectCard`); uma falha de validação recusa o
+   * resume (nunca spawna) e surfaça o mesmo `toSessionError` usado em
+   * qualquer outro caminho de erro deste store; (3) usa a raiz JÁ
+   * VALIDADA/canonicalizada como cwd — nunca `activeProjectRoot`/o projeto
+   * atualmente aberto (Pitfall 2 de 04-RESEARCH.md); (4) `loadSnapshot` do
+   * disco e grava em `liveSession.serializedSnapshot` ANTES de
+   * `activeSessionId` mudar — o único gatilho que faz `TerminalView`
+   * montar/chamar `gainFocus` para esta sessão, garantindo por construção
+   * que o snapshot já esteja disponível quando o check síncrono existente
+   * de `gainFocus` (SESS-03/focus-algorithm.ts) o escreve no xterm
+   * recém-montado, antes de qualquer byte real do `--resume` chegar
+   * (backstop de 04-06-PLAN.md). Idempotente: uma sessão já viva nesta
+   * execução só é refocada, nunca re-spawnada (e portanto nunca
+   * re-validada — a validação já aconteceu na primeira vez que esta sessão
+   * foi retomada com sucesso nesta execução).
    */
   resumeSession: (sessionId: string) => Promise<void>;
   /**
@@ -570,6 +580,24 @@ export const useSessionStore = create<SessionStoreState>()(
         return;
       }
 
+      // WR-01 fix: `session.projectRoot` é lido de `app-state.json`
+      // (`origin: "restored"`) — um arquivo plaintext, adulterável
+      // localmente. Toda outra rota de entrada de project-root neste app
+      // (`openProject`, `switchProject`, o health-check do `ProjectCard`)
+      // já passa por `validateProjectRoot` antes de usar o valor; esta era
+      // a única exceção. Uma falha aqui recusa o resume ANTES de qualquer
+      // outro efeito colateral (wiring de atividade, snapshot, spawn) —
+      // nunca spawna com um `cwd` não revalidado.
+      let validatedRoot: string;
+      try {
+        validatedRoot = (await validateProjectRoot(session.projectRoot)).root;
+      } catch (error) {
+        set((state) => {
+          state.error = toSessionError(error);
+        });
+        return;
+      }
+
       set((state) => {
         state.error = null;
       });
@@ -603,15 +631,17 @@ export const useSessionStore = create<SessionStoreState>()(
         state.lastFocusedSessionId = sessionId;
       });
 
-      // Pitfall 2 (04-RESEARCH.md): usa a PRÓPRIA `projectRoot` persistida
-      // da sessão como cwd — NUNCA `activeProjectRoot`/o projeto
-      // atualmente aberto, que pode ser um projeto diferente do dono desta
-      // sessão (PROJ-05 mantém múltiplos projetos abertos ao mesmo tempo).
-      // `origin` permanece "historical"/"restored" durante este await — a
-      // sessão renderiza `variant="starting"` (pulse, 04-UI-SPEC.md ##
-      // Color) na row já ativa até o spawn resolver, mesmo tratamento
-      // visual de "starting" que uma sessão nova recebe.
-      await spawnSession(sessionId, session.projectRoot, () => {}, ["--resume", sessionId]);
+      // Pitfall 2 (04-RESEARCH.md): usa a raiz da PRÓPRIA sessão — NUNCA
+      // `activeProjectRoot`/o projeto atualmente aberto, que pode ser um
+      // projeto diferente do dono desta sessão (PROJ-05 mantém múltiplos
+      // projetos abertos ao mesmo tempo). `validatedRoot` (WR-01, acima) é a
+      // raiz JÁ canonicalizada/validada — nunca o `session.projectRoot` cru
+      // lido de `app-state.json`. `origin` permanece "historical"/"restored"
+      // durante este await — a sessão renderiza `variant="starting"`
+      // (pulse, 04-UI-SPEC.md ## Color) na row já ativa até o spawn
+      // resolver, mesmo tratamento visual de "starting" que uma sessão nova
+      // recebe.
+      await spawnSession(sessionId, validatedRoot, () => {}, ["--resume", sessionId]);
 
       set((state) => {
         // Uma sessão retomada com sucesso passa a ter um PtySession vivo de

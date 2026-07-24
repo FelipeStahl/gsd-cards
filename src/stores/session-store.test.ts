@@ -77,6 +77,15 @@ vi.mock("../persistence/session-snapshot", () => ({
   saveSnapshot: (...args: unknown[]) => saveSnapshotMock(...args),
 }));
 
+// WR-01 (04-REVIEW.md): `resumeSession` agora re-valida `projectRoot` via
+// `validateProjectRoot` antes de usá-lo como cwd — mockado no nível do
+// módulo pelo mesmo motivo dos demais acima (nunca exercitar o `invoke`
+// real do Tauri fora de um contexto real).
+const validateProjectRootMock = vi.fn();
+vi.mock("../planning/read", () => ({
+  validateProjectRoot: (...args: unknown[]) => validateProjectRootMock(...args),
+}));
+
 const { useSessionStore, toSessionError } = await import("./session-store");
 const { useBoardStore } = await import("./board-store");
 
@@ -100,6 +109,17 @@ beforeEach(() => {
   getPersistedSessionsMock.mockReset().mockResolvedValue([]);
   loadSnapshotMock.mockReset().mockResolvedValue(null);
   saveSnapshotMock.mockReset().mockResolvedValue(undefined);
+  // WR-01: default passthrough — devolve a mesma raiz recebida, como se
+  // `validate_project_root` a tivesse aceitado sem alterações. Os testes que
+  // precisam provar a REVALIDAÇÃO em si (raiz canonicalizada diferente, ou
+  // rejeição) sobrescrevem isso individualmente.
+  validateProjectRootMock.mockReset().mockImplementation(async (root: string) => ({
+    root,
+    planningDir: `${root}/.planning`,
+    hasRoadmap: false,
+    hasState: true,
+    hasGsdCore: true,
+  }));
   listenForSessionExitMock.mockReset().mockResolvedValue(undefined);
   notifyAwaitingMock.mockReset().mockResolvedValue(undefined);
   notifyExitedMock.mockReset().mockResolvedValue(undefined);
@@ -781,6 +801,50 @@ describe("resumeSession (SESS-04 — T-04-16 flag-injection guard)", () => {
     expect(spawnSessionMock).not.toHaveBeenCalled();
     expect(loadSnapshotMock).not.toHaveBeenCalled();
     expect(useSessionStore.getState().activeSessionId).toBe("66666666-6666-4666-a666-666666666666");
+  });
+
+  it("WR-01: revalida projectRoot via validateProjectRoot e spawna com a raiz JÁ VALIDADA como cwd, nunca o valor cru persistido", async () => {
+    seedSession({
+      id: "77777777-7777-4777-a777-777777777777",
+      projectRoot: "/repo-da-sessao-nao-canonico",
+    });
+    validateProjectRootMock.mockResolvedValueOnce({
+      root: "/repo-da-sessao-canonico",
+      planningDir: "/repo-da-sessao-canonico/.planning",
+      hasRoadmap: true,
+      hasState: true,
+      hasGsdCore: true,
+    });
+
+    await useSessionStore.getState().resumeSession("77777777-7777-4777-a777-777777777777");
+
+    expect(validateProjectRootMock).toHaveBeenCalledWith("/repo-da-sessao-nao-canonico");
+    expect(spawnSessionMock).toHaveBeenCalledWith(
+      "77777777-7777-4777-a777-777777777777",
+      "/repo-da-sessao-canonico",
+      expect.any(Function),
+      ["--resume", "77777777-7777-4777-a777-777777777777"],
+    );
+  });
+
+  it("WR-01: recusa retomar (nunca spawna) quando validateProjectRoot rejeita — projectRoot persistido não é mais válido/adulterado", async () => {
+    seedSession({
+      id: "88888888-8888-4888-a888-888888888888",
+      projectRoot: "/pasta-que-nao-existe-mais",
+    });
+    validateProjectRootMock.mockRejectedValueOnce({
+      kind: "OutsideScope",
+      message: "Raiz fora do escopo concedido",
+    });
+
+    await useSessionStore.getState().resumeSession("88888888-8888-4888-a888-888888888888");
+
+    expect(spawnSessionMock).not.toHaveBeenCalled();
+    expect(loadSnapshotMock).not.toHaveBeenCalled();
+    const state = useSessionStore.getState();
+    expect(state.error?.message).toContain("Raiz fora do escopo concedido");
+    // Nunca promove/foca uma sessão cuja raiz falhou revalidação.
+    expect(state.activeSessionId).not.toBe("88888888-8888-4888-a888-888888888888");
   });
 });
 
