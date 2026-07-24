@@ -30,6 +30,16 @@
 // retirada `session.row.historicalTooltip` fica presa no arquivo de i18n
 // (dead key, nunca deletada) — o hover-tooltip do ícone `History` usa
 // `session.row.restoredTooltip` agora.
+//
+// Fase 4, Plano 07 (TERM-04): a variante `exited` (warning, estático, dot +
+// sufixo `session.row.exited`) deixa de ser um slot ocioso e passa a ser
+// dirigida por um sinal REAL — `SessionSidebar` computa
+// `variant={session.exited ? "exited" : "live"}` a partir da flag que
+// `markExited` (session-store.ts) liga ao consumir o evento global
+// `pty:session-exited` (04-02). Nenhuma mudança de comportamento AQUI: este
+// componente já implementava `TONE_BY_VARIANT.exited = "warning"` e o
+// sufixo desde o Plano 04 — só o CALLER que finalmente alimenta a variante
+// com dado real em vez de nunca a passar.
 
 import { useState, type KeyboardEvent, type MouseEvent } from "react";
 import { Archive, History, Pencil, Trash2 } from "lucide-react";

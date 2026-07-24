@@ -23,6 +23,11 @@ const initialSessionState = useSessionStore.getState();
 function openProjectAt(root: string) {
   useBoardStore.setState((state) => {
     state.project = { root } as ReturnType<typeof useBoardStore.getState>["project"];
+    // TERM-04 (04-07-PLAN.md): o badge agora filtra por `activeProjectRoot`
+    // (nunca `sessions[]` cru) — o helper de teste precisa espelhar o que
+    // `openProject`/`switchProject` fazem de verdade, setando os dois campos
+    // numa única transição (mesmo padrão já usado em `SessionSidebar.test.tsx`).
+    state.activeProjectRoot = root;
   });
 }
 
@@ -49,6 +54,7 @@ describe("DrawerRail — badge de contagem de sessões vivas", () => {
   });
 
   it("mostra o count de sessões live quando ≥1 estão vivas", () => {
+    openProjectAt("/repo");
     useSessionStore.setState({
       sessions: [
         { id: "s1", lastModified: new Date(), origin: "live", projectRoot: "/repo" },
@@ -60,6 +66,71 @@ describe("DrawerRail — badge de contagem de sessões vivas", () => {
     render(<DrawerRail />);
 
     expect(screen.getByText("2")).toBeInTheDocument();
+  });
+
+  it("ignora sessões de outro projeto aberto simultaneamente (PROJ-05)", () => {
+    openProjectAt("/repo-ativo");
+    useSessionStore.setState({
+      sessions: [
+        { id: "s1", lastModified: new Date(), origin: "live", projectRoot: "/repo-ativo" },
+        { id: "s2", lastModified: new Date(), origin: "live", projectRoot: "/outro-repo" },
+      ],
+    });
+
+    render(<DrawerRail />);
+
+    expect(screen.getByText("1")).toBeInTheDocument();
+  });
+});
+
+describe("DrawerRail — prioridade do badge (TERM-04)", () => {
+  it("≥1 sessão awaiting -> dot accent SEM número, mesmo com outras sessões live/exited", () => {
+    openProjectAt("/repo");
+    useSessionStore.setState({
+      sessions: [
+        { id: "s1", lastModified: new Date(), origin: "live", projectRoot: "/repo", activity: "awaiting" },
+        { id: "s2", lastModified: new Date(), origin: "live", projectRoot: "/repo", exited: true },
+      ],
+    });
+
+    const { container } = render(<DrawerRail />);
+
+    expect(screen.queryByText("1")).not.toBeInTheDocument();
+    expect(screen.queryByText("2")).not.toBeInTheDocument();
+    const badge = container.querySelector('span[aria-hidden="true"]');
+    expect(badge).toHaveStyle({ backgroundColor: "var(--color-accent)" });
+  });
+
+  it("só exited (sem awaiting) -> dot warning SEM número", () => {
+    openProjectAt("/repo");
+    useSessionStore.setState({
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", projectRoot: "/repo", exited: true }],
+    });
+
+    const { container } = render(<DrawerRail />);
+
+    expect(screen.queryByText("1")).not.toBeInTheDocument();
+    const badge = container.querySelector('span[aria-hidden="true"]');
+    expect(badge).toHaveStyle({ backgroundColor: "var(--color-warning)" });
+  });
+
+  it("só live/idle (sem awaiting/exited) -> número plano, comportamento inalterado da Fase 2", () => {
+    openProjectAt("/repo");
+    useSessionStore.setState({
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", projectRoot: "/repo", activity: "idle" }],
+    });
+
+    render(<DrawerRail />);
+
+    expect(screen.getByText("1")).toBeInTheDocument();
+  });
+
+  it("nenhuma sessão viva -> nenhum badge (rail totalmente passivo, Fase 1)", () => {
+    openProjectAt("/repo");
+
+    const { container } = render(<DrawerRail />);
+
+    expect(container.querySelector('span[aria-hidden="true"]')).not.toBeInTheDocument();
   });
 });
 
