@@ -15,6 +15,7 @@
 // interpretação de texto no meio do caminho.
 
 import { invoke, Channel } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 /** Payload bruto que pode chegar do Channel — normalizado por `toBytes`. */
 type RawChannelMessage = number[] | ArrayBuffer | Uint8Array;
@@ -50,11 +51,19 @@ const activityHandlers = new Map<string, (data: Uint8Array) => void>();
  * `claude` num PTY real no `cwd` fornecido. `cwd` DEVE ser o `root` já
  * canonicalizado por `validateProjectRoot` (Fase 1) — nunca um caminho cru
  * (mitigação T-02-03).
+ *
+ * `args` é encaminhado verbatim ao `CommandBuilder::args` do backend — vazio
+ * (padrão) preserva o comportamento de sessão nova (SESS-02) byte-a-byte;
+ * `["--resume", id]` é o único uso previsto além do vazio (lazy-restore,
+ * plano 04-06). O guard de allow-list sobre o valor do id fica no ÚNICO
+ * ponto de chamada que monta esse array, não aqui (T-04-04) — `spawnSession`
+ * também encaminha verbatim, por design.
  */
 export function spawnSession(
   sessionId: string,
   cwd: string,
   onBytes: (data: Uint8Array) => void,
+  args: string[] = [],
 ): Promise<void> {
   const onEvent = new Channel<RawChannelMessage>();
   bytesHandlers.set(sessionId, onBytes);
@@ -63,7 +72,7 @@ export function spawnSession(
     bytesHandlers.get(sessionId)?.(bytes);
     activityHandlers.get(sessionId)?.(bytes); // sempre dispara, independente de foco
   };
-  return invoke("spawn_session", { sessionId, cwd, onEvent });
+  return invoke("spawn_session", { sessionId, cwd, args, onEvent });
 }
 
 /**
@@ -123,5 +132,33 @@ export async function killSession(sessionId: string): Promise<void> {
     // de classificação de atividade de uma sessão morta vazaria também.
     bytesHandlers.delete(sessionId);
     activityHandlers.delete(sessionId);
+  }
+}
+
+let unlistenExit: UnlistenFn | null = null;
+
+/**
+ * Registra o listener singleton do evento global `pty:session-exited`
+ * (emitido pela thread leitora de `pty.rs` depois que o processo filho sai
+ * naturalmente — EOF/crash/`--resume` falho). Mesmo padrão de
+ * `watch.ts::startWatching`: derruba qualquer listener anterior antes de
+ * registrar um novo, para nunca acumular assinaturas duplicadas se chamado
+ * mais de uma vez. Consumido por 04-06/04-07 (session-store); este plano só
+ * fornece o wrapper — nenhum caller aqui ainda.
+ */
+export async function listenForSessionExit(
+  onExit: (sessionId: string) => void,
+): Promise<void> {
+  await stopListeningForSessionExit();
+  unlistenExit = await listen<{ sessionId: string }>("pty:session-exited", (event) => {
+    onExit(event.payload.sessionId);
+  });
+}
+
+/** Remove o listener de `pty:session-exited`, se houver. Mesmo padrão de teardown de `stopWatching`. */
+export async function stopListeningForSessionExit(): Promise<void> {
+  if (unlistenExit) {
+    unlistenExit();
+    unlistenExit = null;
   }
 }
