@@ -186,13 +186,11 @@ export function GsdCommandToolbar() {
   const isMac = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac");
   const shortcutHint = isMac ? "⌘K" : tTerminal("toolbar.shortcutHint");
 
-  function handleCommandClick(entry: GsdCommandEntry) {
-    const resolution = resolveInjection({
-      command: t(entry.commandKey),
-      kind: entry.kind,
-      activity: target?.activity,
-      hasLiveTarget,
-    });
+  // IN-01: `resolution` é computado UMA VEZ por entrada dentro do `.map()`
+  // abaixo (mesmo padrão de `PhaseCardAction`) e repassado aqui — nunca
+  // recomputado no clique, o que duplicaria a chamada de uma função pura
+  // com os mesmos argumentos a cada interação.
+  function handleCommandClick(resolution: ReturnType<typeof resolveInjection>) {
     if (!target || resolution.mode === "blocked" || resolution.mode === "unavailable" || resolution.payload === null) {
       return;
     }
@@ -240,7 +238,7 @@ export function GsdCommandToolbar() {
             aria-label={label}
             title={isDisabled && resolution.guardKey ? tBoard(stripBoardPrefix(resolution.guardKey)) : label}
             disabled={isDisabled}
-            onClick={() => handleCommandClick(entry)}
+            onClick={() => handleCommandClick(resolution)}
             style={{
               width: 32,
               height: 32,
