@@ -26,6 +26,10 @@ notify-debouncer-full = "0.8.0-rc.2"
 portable-pty = "0.9.0"
 which = "8.0.5"
 tauri-plugin-opener = "2"
+tauri-plugin-store = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 [target.'cfg(windows)'.dependencies]
 win32job = "2.0.3"
@@ -38,6 +42,12 @@ nix = { version = "0.31.3", features = ["signal"] }
 # toolchain deste ambiente é 1.94.1 — 0.38.4 é a última série compatível
 # (rust-version 1.88), API de refresh_processes/Pid idêntica à usada aqui.
 sysinfo = "0.38.4"
+
+# Só no teste tree_kill (Unix): `setsid` via pre_exec para tornar o filho
+# líder de process group, espelhando o que o portable-pty faz em produção,
+# para que o killpg do TreeGuard alcance os descendentes.
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"
 
 [[bin]]
 name = "tree_kill_helper"

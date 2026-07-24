@@ -3,7 +3,7 @@
 // existiam no tipo `SessionRowVariant` e no mapeamento de tom para não
 // exigir rework quando o Plano 06 consumisse o ciclo de vida real do PTY.
 //
-// Este plano (06) adiciona as affordances de ciclo de vida (SESS-06):
+// Fase 2/Plano 05 adicionaram as affordances de ciclo de vida (SESS-06):
 // botões Archive/Trash2 32×32 visíveis só no hover da row (`.session-row`/
 // `.session-row__actions` em `theme.css`). Arquivar mata a árvore de
 // processos e remove a row sem confirmação; Excluir abre o `ConfirmDialog`
@@ -12,17 +12,47 @@
 // Affordances). Nenhuma das duas toca o `.jsonl` de histórico do Claude
 // Code (Pitfall 5 de `02-RESEARCH.md`) — a cópia do `ConfirmDialog` deixa
 // isso explícito ao usuário.
+//
+// Fase 3, Plano 04 (ACT-03): o dot da row `variant === "live"` fica
+// dinâmico via `ActivityDot` quando `session.activity` já foi observado
+// nesta execução — substitui o `success` estático herdado da Fase 2
+// (`03-UI-SPEC.md` ## Color "Supersedes note"). `starting`/`exited`/
+// `historical` são inafetados.
+//
+// Fase 4, Plano 06 (SESS-04): uma row `historical` (que agora também
+// engloba sessões `origin:"restored"` — ver `SessionSidebar.tsx`) ganha um
+// ícone `History` (14px, muted) à esquerda do timestamp, substituindo o
+// hollow-dot como único sinal de "não-live". Clicar a row agora RETOMA de
+// verdade (`onSelect?.(id)` chama `resumeSession` — nunca mais um hint
+// transitório de placeholder): o comportamento de clique é o MESMO para
+// todas as variantes, o pai (`SessionSidebar`) decide se `onSelect` é
+// `focusSession` (live) ou `resumeSession` (historical/restored). O
+// hover-tooltip do ícone `History` usa `session.row.restoredTooltip` (a
+// antiga `session.row.historicalTooltip`, dead key, foi removida dos
+// arquivos de i18n — IN-01 de 04-REVIEW.md).
+//
+// Fase 4, Plano 07 (TERM-04): a variante `exited` (warning, estático, dot +
+// sufixo `session.row.exited`) deixa de ser um slot ocioso e passa a ser
+// dirigida por um sinal REAL — `SessionSidebar` computa
+// `variant={session.exited ? "exited" : "live"}` a partir da flag que
+// `markExited` (session-store.ts) liga ao consumir o evento global
+// `pty:session-exited` (04-02). Nenhuma mudança de comportamento AQUI: este
+// componente já implementava `TONE_BY_VARIANT.exited = "warning"` e o
+// sufixo desde o Plano 04 — só o CALLER que finalmente alimenta a variante
+// com dado real em vez de nunca a passar.
 
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { Archive, Trash2 } from "lucide-react";
+import { useState, type KeyboardEvent, type MouseEvent } from "react";
+import { Archive, History, Pencil, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, ptBR } from "date-fns/locale";
 import type { Locale } from "date-fns";
 import { useTranslation } from "react-i18next";
 
 import { statusDotVariants, type StatusTone } from "../StatusBadge";
+import { ActivityDot } from "../ActivityDot";
 import { useSessionStore, type SessionDescriptor } from "../../stores/session-store";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { RenameSessionControl } from "./RenameSessionControl";
 
 const DATE_FNS_LOCALE: Record<string, Locale> = {
   "pt-BR": ptBR,
@@ -39,32 +69,20 @@ const TONE_BY_VARIANT: Record<SessionRowVariant, StatusTone> = {
   historical: "neutral",
 };
 
-/** Janela de exibição do hint inline ao clicar uma row histórica (SESS-01). */
-const HISTORICAL_HINT_TIMEOUT_MS = 2500;
-
 interface SessionRowProps {
   session: SessionDescriptor;
   variant: SessionRowVariant;
   /** Sessão atualmente exibida no drawer expandido — 4px de borda esquerda accent + fundo um tom mais escuro. */
   active?: boolean;
-  /** Chamado só para rows não-históricas (live) — marca a sessão como ativa/focada. */
+  /** Chamado ao clicar a row — `focusSession` para rows `live`, `resumeSession` (SESS-04) para `historical`/rows restauradas. */
   onSelect?: (sessionId: string) => void;
 }
 
 export function SessionRow({ session, variant, active = false, onSelect }: SessionRowProps) {
   const { t, i18n } = useTranslation("session");
-  const [showHistoricalHint, setShowHistoricalHint] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const hintTimeoutRef = useRef<number | undefined>(undefined);
+  const [isRenaming, setIsRenaming] = useState(false);
   const archiveSession = useSessionStore((state) => state.archiveSession);
-
-  useEffect(() => {
-    return () => {
-      if (hintTimeoutRef.current !== undefined) {
-        window.clearTimeout(hintTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const isHistorical = variant === "historical";
   // Arquivar/Excluir só fazem sentido para sessões desta execução (SESS-06
@@ -92,7 +110,17 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
   function handleCancelDelete() {
     setShowConfirmDelete(false);
   }
-  const label = `${t("row.labelPrefix")} ${session.id.slice(0, 8)}`;
+
+  function handleRenameClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    setIsRenaming(true);
+  }
+
+  // Nome customizado (SESS-05) substitui o label derivado em todo lugar que
+  // o label aparece — o id continua disponível via `title` (fallback de
+  // desambiguação, nunca escondido, 04-UI-SPEC.md ## Rename Session passo 5).
+  const derivedLabel = `${t("row.labelPrefix")} ${session.id.slice(0, 8)}`;
+  const label = session.name ?? derivedLabel;
   const displayLabel = variant === "exited" ? `${label} ${t("row.exited")}` : label;
   const locale = DATE_FNS_LOCALE[i18n.language] ?? ptBR;
   const relativeTime =
@@ -103,19 +131,10 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
         : "";
 
   function handleActivate() {
-    if (isHistorical) {
-      // Row histórica nunca abre o drawer (retomar chega na Fase 4) — só
-      // mostra o hint inline transitoriamente.
-      setShowHistoricalHint(true);
-      if (hintTimeoutRef.current !== undefined) {
-        window.clearTimeout(hintTimeoutRef.current);
-      }
-      hintTimeoutRef.current = window.setTimeout(
-        () => setShowHistoricalHint(false),
-        HISTORICAL_HINT_TIMEOUT_MS,
-      );
-      return;
-    }
+    // SESS-04: clicar QUALQUER variante chama `onSelect` — o pai
+    // (`SessionSidebar`) decide se isso é `focusSession` (live) ou
+    // `resumeSession` (historical/restaurada). Retomar substitui o
+    // placeholder de hint-transitório da Fase 2.
     onSelect?.(session.id);
   }
 
@@ -145,48 +164,97 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
           backgroundColor: active
             ? "color-mix(in srgb, var(--color-secondary) 85%, var(--color-foreground))"
             : "transparent",
-          cursor: isHistorical ? "default" : "pointer",
+          cursor: "pointer",
         }}
       >
-        <span
-          className={[
-            statusDotVariants({ tone: TONE_BY_VARIANT[variant] }),
-            isHistorical ? "status-dot--outline" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          aria-hidden="true"
-        />
-        <span
-          style={{
-            fontFamily: "var(--font-family-mono)",
-            fontSize: "var(--font-size-label)",
-            lineHeight: "var(--line-height-label)",
-            fontWeight: "var(--font-weight-label)",
-            color: "var(--color-foreground)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            flex: 1,
-            minWidth: 0,
-          }}
-        >
-          {displayLabel}
-        </span>
-        <span
-          style={{
-            fontSize: "var(--font-size-label)",
-            lineHeight: "var(--line-height-label)",
-            fontWeight: "var(--font-weight-label)",
-            color: "var(--color-foreground)",
-            opacity: 0.7,
-            flexShrink: 0,
-          }}
-        >
-          {relativeTime}
-        </span>
-        {showLifecycleActions ? (
+        {variant === "live" && session.activity ? (
+          // Plano 04 (Fase 3, ACT-03) — dot da row `live` fica dinâmico
+          // quando a atividade já foi observada nesta execução, substituindo
+          // o `success` estático da Fase 2 (`03-UI-SPEC.md` ## Color
+          // "Supersedes note"). `starting`/`exited`/`historical` são
+          // inafetados — só `live` consome `ActivityDot`.
+          <ActivityDot activity={session.activity} />
+        ) : (
+          <span
+            className={[
+              statusDotVariants({ tone: TONE_BY_VARIANT[variant] }),
+              isHistorical ? "status-dot--outline" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-hidden="true"
+          />
+        )}
+        {isRenaming ? (
+          <RenameSessionControl
+            sessionId={session.id}
+            initialValue={session.name ?? ""}
+            onDone={() => setIsRenaming(false)}
+          />
+        ) : (
+          <span
+            style={{
+              fontFamily: "var(--font-family-mono)",
+              fontSize: "var(--font-size-label)",
+              lineHeight: "var(--line-height-label)",
+              fontWeight: "var(--font-weight-label)",
+              color: "var(--color-foreground)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {displayLabel}
+          </span>
+        )}
+        {!isRenaming && isHistorical ? (
+          // SESS-04 (04-06-PLAN.md, 04-UI-SPEC.md ## Color): sinal visual de
+          // "histórico restaurado, lazily resumível" — substitui o hollow
+          // dot como único indicador de "não-live". `title` no `<span>`
+          // wrapper (lucide-react não aceita `title` diretamente — mesmo
+          // padrão de tooltip nativo dos botões de ação abaixo).
+          <span title={t("row.restoredTooltip")} style={{ display: "flex", flexShrink: 0 }}>
+            <History size={14} aria-hidden="true" style={{ color: "var(--color-foreground)", opacity: 0.6 }} />
+          </span>
+        ) : null}
+        {!isRenaming ? (
+          <span
+            style={{
+              fontSize: "var(--font-size-label)",
+              lineHeight: "var(--line-height-label)",
+              fontWeight: "var(--font-weight-label)",
+              color: "var(--color-foreground)",
+              opacity: 0.7,
+              flexShrink: 0,
+            }}
+          >
+            {relativeTime}
+          </span>
+        ) : null}
+        {showLifecycleActions && !isRenaming ? (
           <span className="session-row__actions" style={{ display: "flex", flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={handleRenameClick}
+              aria-label={t("actions.rename")}
+              title={t("actions.rename")}
+              style={{
+                width: 32,
+                height: 32,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--color-foreground)",
+                flexShrink: 0,
+              }}
+            >
+              <Pencil size={16} aria-hidden="true" />
+            </button>
             <button
               type="button"
               onClick={handleArchiveClick}
@@ -241,20 +309,6 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
           onConfirm={handleConfirmDelete}
           onCancel={handleCancelDelete}
         />
-      ) : null}
-      {isHistorical && showHistoricalHint ? (
-        <div
-          role="status"
-          style={{
-            fontSize: "var(--font-size-label)",
-            lineHeight: "var(--line-height-label)",
-            padding: "0 var(--spacing-md) var(--spacing-xs)",
-            color: "var(--color-foreground)",
-            opacity: 0.75,
-          }}
-        >
-          {t("row.historicalTooltip")}
-        </div>
       ) : null}
     </div>
   );

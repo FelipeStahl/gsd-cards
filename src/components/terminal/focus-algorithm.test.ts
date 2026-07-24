@@ -77,6 +77,51 @@ describe("loseFocus — ordem exata do algoritmo (Pattern 3, 'ao perder foco')",
     expect(order).toEqual(["webgl.dispose", "serialize", "terminal.dispose"]);
   });
 
+  it("SESS-04: chama persistSnapshot com o MESMO valor guardado em liveSession.serializedSnapshot, logo após serialize() e antes do dispose do terminal", () => {
+    const order: string[] = [];
+    const liveSession = createLiveSessionState();
+    const persistSnapshot = vi.fn((snapshot: string) => order.push(`persistSnapshot:${snapshot}`));
+    const terminal: FocusTerminalHandle = {
+      open: vi.fn(),
+      write: vi.fn(),
+      dispose: vi.fn(() => order.push("terminal.dispose")),
+    };
+    const serializeAddon = {
+      serialize: vi.fn(() => {
+        order.push("serialize");
+        return "SNAPSHOT-EM-DISCO";
+      }),
+    };
+
+    loseFocus({
+      liveSession,
+      terminal,
+      serializeAddon,
+      webglAddon: null,
+      redirectToBackground: () => {},
+      persistSnapshot,
+    });
+
+    expect(persistSnapshot).toHaveBeenCalledWith("SNAPSHOT-EM-DISCO");
+    expect(liveSession.serializedSnapshot).toBe("SNAPSHOT-EM-DISCO");
+    expect(order).toEqual(["serialize", "persistSnapshot:SNAPSHOT-EM-DISCO", "terminal.dispose"]);
+  });
+
+  it("persistSnapshot é opcional — omiti-lo preserva o comportamento puro em memória do SESS-03 (sem lançar)", () => {
+    const liveSession = createLiveSessionState();
+
+    expect(() =>
+      loseFocus({
+        liveSession,
+        terminal: { open: vi.fn(), write: vi.fn(), dispose: vi.fn() },
+        serializeAddon: { serialize: () => "X" },
+        webglAddon: null,
+        redirectToBackground: () => {},
+      }),
+    ).not.toThrow();
+    expect(liveSession.serializedSnapshot).toBe("X");
+  });
+
   it("guarda o retorno de serialize() em liveSession.serializedSnapshot", () => {
     const liveSession = createLiveSessionState();
 

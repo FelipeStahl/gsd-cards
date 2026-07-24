@@ -1,0 +1,44 @@
+{
+  "palette": {
+    "placeholder": "Buscar comando…",
+    "empty": "Nenhum comando encontrado"
+  },
+  "list": {
+    "discuss": {
+      "label": "Discutir fase",
+      "command": "/gsd-discuss-phase"
+    },
+    "plan": {
+      "label": "Planejar fase",
+      "command": "/gsd-plan-phase"
+    },
+    "execute": {
+      "label": "Executar fase",
+      "command": "/gsd-execute-phase"
+    },
+    "verify": {
+      "label": "Verificar trabalho",
+      "command": "/gsd-verify-work"
+    },
+    "quick": {
+      "label": "Tarefa rápida",
+      "command": "/gsd-quick"
+    },
+    "next": {
+      "label": "Próximo passo",
+      "command": "/gsd-next"
+    },
+    "progress": {
+      "label": "Ver progresso",
+      "command": "/gsd-progress"
+    },
+    "status": {
+      "label": "Status do projeto",
+      "command": "/gsd-stats"
+    },
+    "help": {
+      "label": "Ajuda",
+      "command": "/gsd-help"
+    }
+  }
+}

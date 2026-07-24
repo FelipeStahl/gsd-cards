@@ -4,23 +4,93 @@
 // inteiro — nunca um board com zero cards (PROJ-02).
 
 import { open } from "@tauri-apps/plugin-dialog";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ArtifactModal } from "../components/ArtifactModal";
 import { DetailPanel } from "../components/DetailPanel";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
+import { HomeScreen } from "../components/home/HomeScreen";
 import { SessionSidebar } from "../components/session/SessionSidebar";
+import { getLanguage } from "../persistence/app-store";
 import { useBoardStore } from "../stores/board-store";
+import { checkForUpdate } from "../updates/check-update";
+import { useUpdateStore } from "../updates/update-store";
 import { Board } from "./Board";
 import { DrawerRail } from "./DrawerRail";
 import { Header } from "./Header";
 
 export function AppShell() {
-  const { t } = useTranslation("project");
+  const { t, i18n } = useTranslation("project");
   const status = useBoardStore((state) => state.status);
   const error = useBoardStore((state) => state.error);
+  const view = useBoardStore((state) => state.view);
   const openProject = useBoardStore((state) => state.openProject);
+  const setView = useBoardStore((state) => state.setView);
+
+  // DIST-01 boot-restore (05-CONTEXT.md "Restauração no startup"): `i18n.init`
+  // já pintou o primeiro frame em pt-BR (síncrono, default de `src/i18n.ts`);
+  // esta leitura async decide se troca. ACIMA de qualquer `return`
+  // condicional (regra dos hooks) — precisa rodar mesmo quando `view ===
+  // "home"` curto-circuita o resto do componente logo abaixo. Padrão de
+  // cancelled-flag idêntico ao `useEffect` de `getRecents()` em
+  // `HomeScreen.tsx`.
+  useEffect(() => {
+    let cancelled = false;
+    // WR-01 fix (05-REVIEW.md): `getLanguage()` enum-valida um valor
+    // devolvido com sucesso, mas não protege a própria chamada de IPC
+    // (`appStore.get()`) contra rejeição — sem este `.catch()`, uma falha de
+    // leitura do store (arquivo bloqueado, appDataDir ilegível etc.) vira uma
+    // unhandled promise rejection e o fallback de `navigator.language`
+    // abaixo nunca roda. Mesma disciplina de "nunca quebra o boot" já
+    // aplicada em `checkForUpdate()` (`check().catch(() => null)`,
+    // `src/updates/check-update.ts:30`) — degrada para `null`, que cai no
+    // mesmo caminho de "nenhuma escolha salva ainda".
+    void getLanguage()
+      .catch(() => null)
+      .then((saved) => {
+        if (cancelled) return;
+        if (saved) {
+          // Valor válido (já enum-validado por `getLanguage`) e diferente do
+          // default de boot — restaura a escolha do usuário.
+          if (saved !== i18n.language) void i18n.changeLanguage(saved);
+          return;
+        }
+        // Nenhuma escolha salva ainda (primeiro boot, ou leitura falhou
+        // acima): fallback de `navigator.language` — só troca para "en"
+        // quando o locale do SO começa com "en"; qualquer outro locale
+        // mantém o default pt-BR (05-CONTEXT.md, RESEARCH "Don't Hand-Roll"
+        // — sem parser de locale).
+        if (navigator.language.toLowerCase().startsWith("en")) {
+          void i18n.changeLanguage("en");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [i18n]);
+
+  // DIST-03 boot check (05-UI-SPEC.md "## Update Affordance"): checa por
+  // atualização UMA vez no mount do AppShell, ACIMA de qualquer `return`
+  // condicional (mesma regra do efeito de idioma acima) para rodar
+  // independentemente de `view`. `checkForUpdate()` é module-cached e nunca
+  // lança (T-05-05) — o resultado alimenta a `update-store` compartilhada
+  // que os dois mounts de `UpdateIndicator` (Header + HomeScreen) leem.
+  useEffect(() => {
+    let cancelled = false;
+    void checkForUpdate().then((update) => {
+      if (cancelled) return;
+      if (update) {
+        useUpdateStore.getState().setAvailable(update);
+      } else {
+        useUpdateStore.getState().setUpToDate();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleOpenProject() {
     // Único caminho que entra no app: o escolhido pelo diálogo nativo — nunca
@@ -28,7 +98,27 @@ export function AppShell() {
     const selected = await open({ directory: true, multiple: false });
     if (typeof selected === "string") {
       await openProject(selected);
+      // CR-01 fix: este handler também é usado pelo CTA "Abrir pasta" da
+      // Home (`view === "home"` por default agora) — sem este `setView`,
+      // uma falha de `openProject` (pasta não é projeto GSD, IoError etc.)
+      // muda `status` para "error" mas o usuário permanece preso na Home,
+      // nunca vendo o `ErrorState` correspondente (que só renderiza dentro
+      // do ramo `view === "board"`). Mesma disciplina de `handleOpenRecent`
+      // abaixo: SEMPRE troca para "board" após a tentativa, sucesso ou não.
+      setView("board");
     }
+  }
+
+  async function handleOpenRecent(root: string) {
+    await openProject(root);
+    setView("board");
+  }
+
+  if (view === "home") {
+    // Home substitui o shell inteiro (Header/SessionSidebar/DrawerRail não
+    // montam) — Pattern 1 de 04-RESEARCH.md, curto-circuita ANTES do
+    // ternário `status` abaixo.
+    return <HomeScreen onOpenFolder={handleOpenProject} onOpenRecent={handleOpenRecent} />;
   }
 
   return (

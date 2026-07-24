@@ -112,7 +112,25 @@ Plans:
   3. O app detecta o estado do terminal (ocioso/ocupado/aguardando permissão) e não injeta comandos enquanto o Claude está ocupado.
   4. Usuário aciona atalhos GSD (paleta/botões de comandos `/gsd-*`) no drawer junto ao terminal.
 
-**Plans**: TBD
+**Plans**: 5/5 plans executed
+Plans:
+**Wave 1**
+
+- [x] 03-01-PLAN.md — Fatia-traçadora: card lê `diskStatus`, sanitiza `phase.id` e injeta o `/gsd-*` correto via `writeSession` (ACT-01/ACT-02)
+- [x] 03-02-PLAN.md — Gate de legitimidade + install de `strip-ansi@7.2.0` (dependência do classificador)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 03-03-PLAN.md — Motor de detecção de estado: `activityHandlers` sempre-ligado, `classifyActivity` puro, campo `activity` transition-gated (ACT-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 03-04-PLAN.md — Matriz de injeção (`resolveInjection`), guard 3-estados no card, dot de atividade e ação no DetailPanel (ACT-01/ACT-02/ACT-03)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [x] 03-05-PLAN.md — Toolbar de comandos GSD + paleta Cmd/Ctrl+K no drawer, sob o mesmo guard (ACT-04)
+
 **UI hint**: yes
 
 ### Phase 4: Casa persistente
@@ -129,7 +147,30 @@ Plans:
   4. Ao reabrir o app, as sessões são restauradas (snapshot do buffer + histórico via `claude --resume`, restauração lazy), comunicando visualmente que é histórico restaurado, não processo contínuo.
   5. Usuário renomeia sessões e é notificado (alerta do SO + badge na sidebar) quando uma sessão termina ou precisa de input.
 
-**Plans**: TBD
+**Plans**: 7/7 plans executed
+Plans:
+**Wave 1**
+
+- [x] 04-01-PLAN.md — Fatia-traçadora: install dos plugins (gate de legitimidade) + fundação de persistência (app-state.json) end-to-end
+- [x] 04-02-PLAN.md — Backend PTY: passthrough de `--resume` + evento `pty:session-exited` + `PtyManager::remove_exited`
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 04-03-PLAN.md — Multi-projeto: `switchProject` (watcher único re-sincronizado) + botão Home no Header (PROJ-05)
+- [x] 04-04-PLAN.md — Home: grid de recentes + saúde por card + criar projeto do zero (PROJ-01/PROJ-06/PROJ-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 04-05-PLAN.md — Escopo de sessão por projeto + renomear sessão (PROJ-05/SESS-05)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [x] 04-06-PLAN.md — Persistência + restauração lazy de sessão + guard de flag-injection `isValidSessionId` (SESS-04)
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [x] 04-07-PLAN.md — Notificações do SO + badge + fiação do evento de saída (TERM-04)
+
 **UI hint**: yes
 
 ### Phase 5: Comunidade
@@ -144,7 +185,21 @@ Plans:
   2. Usuário instala o app via instalador empacotado (Windows primeiro; macOS/Linux também).
   3. O app detecta uma nova versão e se atualiza automaticamente.
 
-**Plans**: TBD
+**Plans**: 4/4 plans executed
+Plans:
+**Wave 1**
+
+- [x] 05-01-PLAN.md — Fatia-traçadora DIST-01: seletor de idioma end-to-end (toggle → changeLanguage → persistir no app-store → restaurar no boot com validação de enum fechado) + trava de paridade dos 9 namespaces
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 05-02-PLAN.md — DIST-03 backend: gate de legitimidade + install dos plugins updater/process + registro em lib.rs + capabilities granulares (nunca catch-all)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 05-03-PLAN.md — DIST-03 frontend: wrapper check-update (cache/never-throws) + update-store + UpdateIndicator (5 estados) + namespace update + check no boot do AppShell + montagens
+- [x] 05-04-PLAN.md — DIST-02/DIST-03 config: bundle + plugins.updater (endpoint HTTPS + pubkey placeholder) + release.yml + RELEASE.md, com handoff Manual-Only da chave de assinatura
+
 **UI hint**: yes
 
 ## Progress
@@ -156,6 +211,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Espelho fiel | 8/8 | In Progress|  |
 | 2. Sessão viva | 6/6 | In Progress|  |
-| 3. Board interativo | 0/TBD | Not started | - |
-| 4. Casa persistente | 0/TBD | Not started | - |
-| 5. Comunidade | 0/TBD | Not started | - |
+| 3. Board interativo | 5/5 | In Progress|  |
+| 4. Casa persistente | 7/7 | In Progress|  |
+| 5. Comunidade | 4/4 | In Progress|  |

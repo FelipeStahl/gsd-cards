@@ -4,6 +4,13 @@ on:
   push:
   pull_request:
 
+# Cancela runs em andamento da mesma branch/PR quando um novo commit chega —
+# evita jobs obsoletos (ex.: um build Windows lento) segurando runners depois
+# de já terem sido superados por um push mais novo.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:

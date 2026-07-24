@@ -45,6 +45,49 @@ function isSafeUrl(uri: string): boolean {
   return SAFE_URL_PATTERN.test(uri);
 }
 
+/**
+ * Handler de `attachCustomKeyEventHandler` (xterm.js) — extraído como
+ * função pura, sem nenhuma dependência de `Terminal`/canvas real, para que
+ * possa ser testada diretamente (o jsdom deste projeto não tem
+ * `HTMLCanvasElement.getContext`, ver a nota em `search.test.tsx` — um
+ * `Terminal` real nunca pode ser `.open()`ado num teste aqui).
+ *
+ * Ctrl+F/Cmd+F abre a search bar (02-UI-SPEC.md ## Terminal Search Bar).
+ *
+ * WR-01: Ctrl+K/Cmd+K precisa ser interceptado AQUI, na fase em que o
+ * xterm.js decide se processa a tecla como input real do PTY — um listener
+ * `window`-level sozinho (`GsdCommandToolbar.tsx`) roda DEPOIS que o xterm
+ * já despachou o keydown para seu próprio handler interno (o textarea
+ * escondido do xterm captura o evento primeiro, na fase de bubble a partir
+ * do próprio DOM target), então por si só ele chega tarde demais para
+ * impedir que Ctrl+K — o binding padrão do readline para "apagar até o
+ * fim da linha" — vaze como byte real para o PTY via `onData`. Retornar
+ * `false` aqui instrui o xterm a pular seu processamento padrão dessa
+ * tecla por completo, então `onData` nunca dispara para ela. Abrir a
+ * paleta em si continua sendo responsabilidade independente do listener
+ * `window`-level do `GsdCommandToolbar` (ele precisa funcionar mesmo com o
+ * terminal sem foco) — o único trabalho deste handler é garantir que o
+ * atalho nunca alcance o PTY.
+ */
+export function createTerminalKeyHandler(
+  onOpenSearch: () => void,
+): (event: KeyboardEvent) => boolean {
+  return (event) => {
+    if (event.type !== "keydown") return true;
+    const mod = event.ctrlKey || event.metaKey;
+    if (mod && event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      onOpenSearch();
+      return false;
+    }
+    if (mod && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      return false;
+    }
+    return true;
+  };
+}
+
 // Valores EXATOS de `02-UI-SPEC.md` ## Terminal Chrome & xterm Theme —
 // xterm.js exige hex/rgba literais, não lê custom properties de CSS.
 const FONT_FAMILY = '"JetBrains Mono Variable", ui-monospace, "Cascadia Code", monospace';
@@ -120,40 +163,70 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
     const sessionStore = useSessionStore.getState();
     const isNewSession = !sessionStore.hasLiveSession(sessionId);
     const liveSession = sessionStore.getOrCreateLiveSession(sessionId);
+    // SESS-04 (04-06-PLAN.md): o descriptor desta sessão em `sessions[]` —
+    // usado só para decidir, abaixo, entre `spawnSession` (sessão nova) e
+    // `resumeSession` (sessão restaurada de uma execução anterior, sem
+    // PtySession viva ainda).
+    const sessionDescriptor = sessionStore.sessions.find((session) => session.id === sessionId);
 
     let disposed = false;
     const disposables: { dispose(): void }[] = [];
     let fitAddon: FitAddon | null = null;
     let serializeAddon: SerializeAddon | null = null;
 
+    // ACT-03 (CR-01 fix): a classificação de atividade NÃO é mais wireada
+    // aqui — vivia presa ao ciclo de vida deste `useEffect` (por
+    // `[sessionId, projectRoot]`), então uma sessão em background ou o
+    // alvo `lastFocusedSessionId` de um drawer recolhido (nenhum
+    // `TerminalView` montado) nunca era classificada, congelando o
+    // busy-guard. Agora `wireTerminalActivity` é chamado uma única vez por
+    // sessão viva em `session-store.ts::createSession`, e só é parado em
+    // `killSession`/`archiveSession` — nunca por este componente montar ou
+    // desmontar.
+
     if (isNewSession) {
-      // Registra o Channel/processo ANTES de `gainFocus` abaixo — o
-      // redirect síncrono de `gainFocus` (via `setSessionBytesHandler`)
-      // sobrescreve este handler inicial antes que qualquer byte real
-      // possa chegar (o roundtrip do `invoke()` é assíncrono; o canal só
-      // existe de fato depois dele). `spawnSession` só é chamado esta UMA
-      // vez por sessão — trocar de foco depois nunca volta a chamá-lo.
-      void spawnSession(sessionId, projectRoot, () => {}).then(
-        () => {
-          // O resize síncrono feito por `fitAndResize` logo abaixo pode ter
-          // corrido antes do backend confirmar o spawn (sessão nova) — este
-          // segundo resize, feito com o tamanho ATUAL do terminal (que já
-          // pode ter mudado se o usuário trocou de sessão nesse meio
-          // tempo), garante que o PTY real fique com o tamanho certo.
-          if (!disposed && terminalRef.current) {
-            void resizeSession(sessionId, terminalRef.current.cols, terminalRef.current.rows).catch(
-              () => {},
-            );
-          }
-        },
-        (error: unknown) => {
-          if (!disposed) {
-            terminalRef.current?.write(
-              `\r\n\x1b[31mNão foi possível iniciar esta sessão: ${String(error)}\x1b[0m\r\n`,
-            );
-          }
-        },
-      );
+      if (sessionDescriptor?.origin === "restored") {
+        // SESS-04: uma sessão restaurada (persistida em `app-state.json` de
+        // uma execução anterior) NUNCA é um spawn "novo" — `resumeSession`
+        // valida o id (T-04-16, flag-injection), lê a PRÓPRIA `projectRoot`
+        // da sessão (nunca a prop `projectRoot` deste componente, que
+        // reflete o projeto ATIVO — Pitfall 2 de 04-RESEARCH.md), carrega o
+        // snapshot em disco e só então chama `spawnSession` com
+        // `["--resume", id]`. Rede de segurança/idempotente: na prática
+        // `hasLiveSession` já é `true` por aqui na maioria dos casos (o
+        // clique na row em `SessionSidebar` já chamou `resumeSession`
+        // ANTES de `activeSessionId` mudar e este efeito montar) —
+        // `resumeSession` detecta isso e só refoca, nunca spawna de novo.
+        void useSessionStore.getState().resumeSession(sessionId);
+      } else {
+        // Registra o Channel/processo ANTES de `gainFocus` abaixo — o
+        // redirect síncrono de `gainFocus` (via `setSessionBytesHandler`)
+        // sobrescreve este handler inicial antes que qualquer byte real
+        // possa chegar (o roundtrip do `invoke()` é assíncrono; o canal só
+        // existe de fato depois dele). `spawnSession` só é chamado esta UMA
+        // vez por sessão — trocar de foco depois nunca volta a chamá-lo.
+        void spawnSession(sessionId, projectRoot, () => {}).then(
+          () => {
+            // O resize síncrono feito por `fitAndResize` logo abaixo pode ter
+            // corrido antes do backend confirmar o spawn (sessão nova) — este
+            // segundo resize, feito com o tamanho ATUAL do terminal (que já
+            // pode ter mudado se o usuário trocou de sessão nesse meio
+            // tempo), garante que o PTY real fique com o tamanho certo.
+            if (!disposed && terminalRef.current) {
+              void resizeSession(sessionId, terminalRef.current.cols, terminalRef.current.rows).catch(
+                () => {},
+              );
+            }
+          },
+          (error: unknown) => {
+            if (!disposed) {
+              terminalRef.current?.write(
+                `\r\n\x1b[31mNão foi possível iniciar esta sessão: ${String(error)}\x1b[0m\r\n`,
+              );
+            }
+          },
+        );
+      }
     }
 
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -222,19 +295,10 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
           }),
         );
 
-        // Ctrl+F/Cmd+F com o terminal focado abre a search bar
-        // (02-UI-SPEC.md ## Terminal Search Bar) — `preventDefault` para
-        // que o navegador não abra sua própria busca nativa, e `return
-        // false` para que o xterm.js não insira o atalho como input do PTY.
-        t.attachCustomKeyEventHandler((event) => {
-          if (event.type !== "keydown") return true;
-          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
-            event.preventDefault();
-            setSearchOpen(true);
-            return false;
-          }
-          return true;
-        });
+        // Ctrl+F/Cmd+F abre a search bar; Ctrl+K/Cmd+K (WR-01) é engolido
+        // aqui para nunca vazar como byte para o PTY — ver
+        // `createTerminalKeyHandler` acima.
+        t.attachCustomKeyEventHandler(createTerminalKeyHandler(() => setSearchOpen(true)));
       },
       loadWebglAddon: (t) => {
         const addon = new WebglAddon();
@@ -275,6 +339,14 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
           serializeAddon,
           webglAddon,
           redirectToBackground: (push) => setSessionBytesHandler(sessionId, push),
+          // SESS-04 (04-06-PLAN.md): estende o fluxo em memória do SESS-03 —
+          // o MESMO snapshot que acaba de ser guardado em
+          // `currentLiveSession.serializedSnapshot` também é gravado em
+          // disco (`session-<id>.json`), pronto para uma restauração lazy
+          // numa próxima abertura do app.
+          persistSnapshot: (snapshot) => {
+            useSessionStore.getState().persistSnapshot(sessionId, snapshot);
+          },
         });
       } else {
         // Sessão já foi encerrada (arquivar/excluir/kill) antes deste

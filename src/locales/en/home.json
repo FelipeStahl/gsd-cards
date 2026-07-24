@@ -1,0 +1,51 @@
+{
+  "heading": "Recent projects",
+  "actions": {
+    "newProject": "New GSD project",
+    "openFolder": "Open folder"
+  },
+  "empty": {
+    "heading": "No projects yet",
+    "body": "Open a folder with an existing GSD project or create a new one from scratch."
+  },
+  "card": {
+    "loading": "Loading health…",
+    "blockers_one": "1 pending blocker",
+    "blockers_other": "{{count}} pending blockers",
+    "progress": "{{percent}}% complete",
+    "error": {
+      "heading": "Project not found",
+      "body": "The folder {{path}} no longer exists or was moved.",
+      "remove": "Remove from list",
+      "retry": "Retry"
+    }
+  },
+  "create": {
+    "pickerPrompt": "Choose an empty folder for the new project",
+    "progress": {
+      "heading": "Creating project…",
+      "body": "Running /gsd-new-project in the session. Watch the terminal.",
+      "terminalLabel": "/gsd-new-project session output",
+      "terminalPlaceholder": "Waiting for session output…",
+      "inputPlaceholder": "Type and press Enter to reply",
+      "cancel": "Cancel"
+    },
+    "error": {
+      "notEmpty": {
+        "heading": "Folder is not empty",
+        "body": "Choose an empty or new folder to create a GSD project from scratch.",
+        "dismiss": "OK"
+      },
+      "readFailed": {
+        "heading": "Couldn't read that folder",
+        "body": "Check the chosen folder's permissions and try again.",
+        "dismiss": "OK"
+      },
+      "generic": {
+        "heading": "Couldn't create the project",
+        "body": "Something went wrong running /gsd-new-project — the session may have stalled or failed to start. Try again.",
+        "dismiss": "OK"
+      }
+    }
+  }
+}

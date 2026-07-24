@@ -70,7 +70,16 @@ impl TreeGuard {
     /// (comportamento documentado da API Win32).
     pub fn attach(child: &dyn portable_pty::Child) -> Result<Self, GuardError> {
         let handle = child.as_raw_handle().ok_or(GuardError::NoHandle)?;
+        Self::from_raw_handle(handle)
+    }
 
+    /// Mesma lógica de `attach`, mas a partir do handle bruto do Windows —
+    /// permite anexar a QUALQUER processo já spawnado, não só os do
+    /// portable-pty (ex.: um `std::process::Child` num teste que não usa PTY).
+    /// O mecanismo de Job Object é idêntico independente de como o processo
+    /// foi criado; `attach` é só o caso particular que extrai o handle de um
+    /// `portable_pty::Child`.
+    pub fn from_raw_handle(handle: std::os::windows::io::RawHandle) -> Result<Self, GuardError> {
         let job = win32job::Job::create()
             .map_err(|e| GuardError::Platform(e.to_string()))?;
         let mut info = job.query_extended_limit_info()
@@ -109,7 +118,16 @@ impl TreeGuard {
     /// grupo e morrem juntos com um único `killpg`.
     pub fn attach(child: &dyn portable_pty::Child) -> Result<Self, GuardError> {
         let pid = child.process_id().ok_or(GuardError::NoPid)?;
-        Ok(Self { pid: pid as i32 })
+        Ok(Self::from_pid(pid))
+    }
+
+    /// Mesma lógica de `attach`, mas a partir do pid — permite anexar a
+    /// qualquer processo já spawnado (ex.: um `std::process::Child` num teste
+    /// que não usa PTY). O pid DEVE ser o líder do process group (o alvo do
+    /// `killpg`); em produção o portable-pty garante isso via `setsid`, e um
+    /// teste sem PTY precisa fazer o `setsid` equivalente no filho.
+    pub fn from_pid(pid: u32) -> Self {
+        Self { pid: pid as i32 }
     }
 
     /// Mata o grupo de processos inteiro (pid negativo) — alcança qualquer

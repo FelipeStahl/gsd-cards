@@ -6,6 +6,7 @@ import type { KeyboardEvent } from "react";
 import { AlertTriangle, ListChecks } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { PhaseCardAction } from "./PhaseCardAction";
 import { ProgressBar } from "./ProgressBar";
 import { StatusBadge } from "./StatusBadge";
 import { useUiStore } from "../stores/ui-store";
@@ -116,6 +117,7 @@ export function PhaseCard({ phase, highlighted = false, parseWarning = false }: 
             {t("card.blocked")}
           </span>
         ) : null}
+        <PhaseCardAction phase={phase} style={{ marginLeft: "auto" }} />
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-sm)" }}>

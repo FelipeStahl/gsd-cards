@@ -1,0 +1,51 @@
+{
+  "heading": "Projetos recentes",
+  "actions": {
+    "newProject": "Novo projeto GSD",
+    "openFolder": "Abrir pasta"
+  },
+  "empty": {
+    "heading": "Nenhum projeto ainda",
+    "body": "Abra uma pasta com um projeto GSD existente ou crie um novo projeto do zero."
+  },
+  "card": {
+    "loading": "Carregando saúde…",
+    "blockers_one": "1 bloqueio pendente",
+    "blockers_other": "{{count}} bloqueios pendentes",
+    "progress": "{{percent}}% concluído",
+    "error": {
+      "heading": "Projeto não encontrado",
+      "body": "A pasta {{path}} não existe mais ou foi movida.",
+      "remove": "Remover da lista",
+      "retry": "Tentar novamente"
+    }
+  },
+  "create": {
+    "pickerPrompt": "Escolha uma pasta vazia para o novo projeto",
+    "progress": {
+      "heading": "Criando projeto…",
+      "body": "Conduzindo /gsd-new-project na sessão. Acompanhe o terminal.",
+      "terminalLabel": "Saída da sessão /gsd-new-project",
+      "terminalPlaceholder": "Aguardando saída da sessão…",
+      "inputPlaceholder": "Digite e pressione Enter para responder",
+      "cancel": "Cancelar"
+    },
+    "error": {
+      "notEmpty": {
+        "heading": "Pasta não está vazia",
+        "body": "Escolha uma pasta vazia ou nova para criar um projeto GSD do zero.",
+        "dismiss": "OK"
+      },
+      "readFailed": {
+        "heading": "Não foi possível ler essa pasta",
+        "body": "Verifique as permissões da pasta escolhida e tente novamente.",
+        "dismiss": "OK"
+      },
+      "generic": {
+        "heading": "Não foi possível criar o projeto",
+        "body": "Algo deu errado ao conduzir /gsd-new-project — a sessão pode ter travado ou falhado ao iniciar. Tente novamente.",
+        "dismiss": "OK"
+      }
+    }
+  }
+}
