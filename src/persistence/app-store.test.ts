@@ -101,6 +101,33 @@ describe("app-store", () => {
     await expect(removeRecent("/projects/inexistente")).resolves.toBeUndefined();
     expect((await getRecents()).map((r) => r.root)).toEqual(["/projects/a"]);
   });
+
+  it("WR-02: duas upsertRecent CONCORRENTES (nunca await'adas em sequência) persistem AMBAS as entradas, sem lost-update", async () => {
+    // Sem serialização, a leitura de B pode acontecer ANTES da escrita de A
+    // aplicar (mesma ordem de microtask de `get()`/`set()` async do
+    // `FakeLazyStore`) — B sobrescreveria A silenciosamente. Disparar as
+    // duas SEM await intermediário (Promise.all) é o que exercita essa
+    // corrida; `withStoreLock` deve serializar as duas de qualquer jeito.
+    await Promise.all([
+      upsertRecent({ root: "/projects/a", name: "a", lastOpened: "2026-07-24T10:00:00.000Z" }),
+      upsertRecent({ root: "/projects/b", name: "b", lastOpened: "2026-07-24T11:00:00.000Z" }),
+    ]);
+
+    const roots = (await getRecents()).map((r) => r.root).sort();
+    expect(roots).toEqual(["/projects/a", "/projects/b"]);
+  });
+
+  it("WR-02: upsertRecent e removeRecent concorrentes (chaves diferentes de outra escrita concorrente) nunca se perdem entre si", async () => {
+    await upsertRecent({ root: "/projects/a", name: "a", lastOpened: "2026-07-24T10:00:00.000Z" });
+
+    await Promise.all([
+      upsertRecent({ root: "/projects/b", name: "b", lastOpened: "2026-07-24T11:00:00.000Z" }),
+      upsertRecent({ root: "/projects/c", name: "c", lastOpened: "2026-07-24T12:00:00.000Z" }),
+    ]);
+
+    const roots = (await getRecents()).map((r) => r.root).sort();
+    expect(roots).toEqual(["/projects/a", "/projects/b", "/projects/c"]);
+  });
 });
 
 describe("app-store — metadados de sessão persistidos (SESS-04, 04-06-PLAN.md)", () => {
@@ -134,5 +161,15 @@ describe("app-store — metadados de sessão persistidos (SESS-04, 04-06-PLAN.md
     const sessions = await getPersistedSessions("/repo");
     expect(sessions).toHaveLength(1);
     expect(sessions[0].lastActive).toBe("2026-07-24T11:00:00.000Z");
+  });
+
+  it("WR-02: duas upsertPersistedSession CONCORRENTES para ids distintos (ex.: dois terminais perdendo foco quase ao mesmo tempo) persistem AMBAS", async () => {
+    await Promise.all([
+      upsertPersistedSession({ id: "session-a", projectRoot: "/repo", lastActive: "2026-07-24T10:00:00.000Z" }),
+      upsertPersistedSession({ id: "session-b", projectRoot: "/repo", lastActive: "2026-07-24T10:00:01.000Z" }),
+    ]);
+
+    const ids = (await getPersistedSessions("/repo")).map((s) => s.id).sort();
+    expect(ids).toEqual(["session-a", "session-b"]);
   });
 });
