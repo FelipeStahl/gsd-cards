@@ -4,6 +4,8 @@ const invokeMock = vi.fn();
 const readDirMock = vi.fn();
 const statMock = vi.fn();
 const killSessionProcessMock = vi.fn();
+const spawnSessionMock = vi.fn();
+const writeSessionMock = vi.fn();
 const wireTerminalActivityMock = vi.fn();
 const activityStopMock = vi.fn();
 
@@ -18,6 +20,8 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
 
 vi.mock("../pty/channel", () => ({
   killSession: (...args: unknown[]) => killSessionProcessMock(...args),
+  spawnSession: (...args: unknown[]) => spawnSessionMock(...args),
+  writeSession: (...args: unknown[]) => writeSessionMock(...args),
 }));
 
 // CR-01: `createSession` now wires ACT-03 activity classification directly
@@ -44,6 +48,8 @@ beforeEach(() => {
   readDirMock.mockReset();
   statMock.mockReset();
   killSessionProcessMock.mockReset();
+  spawnSessionMock.mockReset().mockResolvedValue(undefined);
+  writeSessionMock.mockReset().mockResolvedValue(undefined);
   wireTerminalActivityMock.mockReset();
   activityStopMock.mockReset();
   wireTerminalActivityMock.mockReturnValue(activityStopMock);
@@ -101,6 +107,55 @@ describe("createSession", () => {
 
     const session = useSessionStore.getState().sessions.find((s) => s.id === id);
     expect(session?.origin).toBe("live");
+  });
+});
+
+describe("createProjectSession", () => {
+  it("spawna com a pasta crua como cwd e injeta /gsd-new-project, sem chamar validateProjectRoot", async () => {
+    invokeMock.mockResolvedValueOnce("/home/user/.claude/projects/-nova-pasta");
+
+    const id = await useSessionStore.getState().createProjectSession("/nova-pasta");
+
+    expect(id).toEqual(expect.any(String));
+    expect(spawnSessionMock).toHaveBeenCalledWith(id, "/nova-pasta", expect.any(Function));
+    expect(writeSessionMock).toHaveBeenCalledWith(id, "/gsd-new-project\r");
+    // Nenhum outro módulo deste teste expõe/mocka `validateProjectRoot` —
+    // se `createProjectSession` tentasse chamá-lo, o import real (não
+    // mockado) do módulo `../planning/read` seria exercitado, o que não
+    // acontece aqui (nenhuma chamada de `invoke("validate_project_root", ...)`).
+    expect(invokeMock).not.toHaveBeenCalledWith("validate_project_root", expect.anything());
+  });
+
+  it("registra a sessão criada em sessions[] com origin live e a marca ativa/focada", async () => {
+    invokeMock.mockResolvedValueOnce("/home/user/.claude/projects/-nova-pasta");
+
+    const id = await useSessionStore.getState().createProjectSession("/nova-pasta");
+
+    const state = useSessionStore.getState();
+    expect(state.activeSessionId).toBe(id);
+    expect(state.lastFocusedSessionId).toBe(id);
+    expect(state.sessions.find((session) => session.id === id)?.origin).toBe("live");
+  });
+
+  it("chama invoke(register_sessions_scope) com a pasta crua, mas degrada silenciosamente se ele falhar", async () => {
+    invokeMock.mockRejectedValueOnce(new Error("register_sessions_scope indisponível"));
+
+    const id = await useSessionStore.getState().createProjectSession("/nova-pasta");
+
+    expect(invokeMock).toHaveBeenCalledWith("register_sessions_scope", { projectRoot: "/nova-pasta" });
+    // O spawn/injeção acontecem mesmo com a falha do registro de escopo —
+    // esse registro só afeta a descoberta de sessões históricas, nunca o
+    // fluxo de criação em si.
+    expect(spawnSessionMock).toHaveBeenCalledWith(id, "/nova-pasta", expect.any(Function));
+    expect(writeSessionMock).toHaveBeenCalledWith(id, "/gsd-new-project\r");
+  });
+
+  it("wireia a classificação de atividade (ACT-03) para a sessão criada, mesma disciplina de createSession", async () => {
+    invokeMock.mockResolvedValueOnce("/home/user/.claude/projects/-nova-pasta");
+
+    const id = await useSessionStore.getState().createProjectSession("/nova-pasta");
+
+    expect(wireTerminalActivityMock).toHaveBeenCalledWith(id, expect.any(Function));
   });
 });
 

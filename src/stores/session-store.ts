@@ -19,7 +19,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { createLiveSessionState, type LiveSessionState } from "../components/terminal/focus-algorithm";
 import { wireTerminalActivity } from "../components/terminal/useTerminalActivity";
-import { killSession as killSessionProcess } from "../pty/channel";
+import { killSession as killSessionProcess, spawnSession, writeSession } from "../pty/channel";
 import type { TerminalActivity } from "../pty/activity";
 import { listSessions, type SessionSignal } from "../sessions/discover";
 import { useBoardStore } from "./board-store";
@@ -103,6 +103,24 @@ interface SessionStoreState {
   error: SessionError | null;
   /** Gera um novo id de sessão, marca como ativa/focada e a registra em `sessions[]` como `live`. Retorna `null` (sem criar nada) se nenhum projeto está aberto. */
   createSession: () => string | null;
+  /**
+   * Cria uma sessão numa pasta CRUA, ainda sem `.planning/` (PROJ-03,
+   * 04-RESEARCH.md Pattern 2) — caminho paralelo a `createSession`, NUNCA
+   * uma variante dele: `createSession` recusa rodar sem
+   * `useBoardStore.getState().project` já aberto/validado, exatamente o
+   * portão que este fluxo precisa contornar (a pasta escolhida no diálogo
+   * de "Novo projeto GSD" ainda não é um projeto GSD válido). Spawna com
+   * `rawFolder` como `cwd` (sem `validateProjectRoot` prévio) e injeta
+   * `/gsd-new-project\r` assim que o backend confirma o processo up.
+   * Diferente de `createSession` (que só REGISTRA a sessão e deixa
+   * `TerminalView` chamar `spawnSession` na montagem — nenhum
+   * `TerminalView` monta na home), esta ação spawna o PTY ela mesma, já que
+   * não há terminal montado enquanto `view === "home"`. Nunca chama
+   * `openProject`/escreve `.planning/` — quem observa o `.planning/`
+   * aparecer e chama `openProject(rawFolder)` é o caller
+   * (`CreateProjectFlow`). Retorna o id da sessão criada.
+   */
+  createProjectSession: (rawFolder: string) => Promise<string>;
   /** Marca uma sessão EXISTENTE (linha viva da sidebar) como ativa/focada — não cria nada novo. */
   focusSession: (sessionId: string) => void;
   /** Mata a árvore de processos da sessão e limpa `activeSessionId` se for a sessão ativa. Não remove a sessão de `sessions[]` — ver `archiveSession` para a ação de ciclo de vida (SESS-06). */
@@ -232,6 +250,46 @@ export const useSessionStore = create<SessionStoreState>()(
           }),
         );
       }
+
+      return sessionId;
+    },
+
+    createProjectSession: async (rawFolder: string) => {
+      const sessionId = crypto.randomUUID();
+
+      try {
+        await invoke("register_sessions_scope", { projectRoot: rawFolder });
+      } catch {
+        // Escopo de descoberta histórica não concedido (fora de um
+        // contexto Tauri real, ou falha do backend) — não impede o spawn
+        // em si, mesma disciplina defensiva de `discoverSessions`.
+      }
+
+      set((state) => {
+        state.activeSessionId = sessionId;
+        state.lastFocusedSessionId = sessionId;
+        state.error = null;
+        state.sessions.push({ id: sessionId, lastModified: new Date(), origin: "live" });
+      });
+
+      // CR-01: mesma disciplina de `createSession` — atividade wireada para
+      // a vida inteira da sessão, aqui na criação, independente de haver
+      // algum `TerminalView` montado (não há, enquanto `view === "home"`).
+      if (!activityStops.has(sessionId)) {
+        activityStops.set(
+          sessionId,
+          wireTerminalActivity(sessionId, (activity) => {
+            get().setActivity(sessionId, activity);
+          }),
+        );
+      }
+
+      // `rawFolder` NUNCA passou por `validateProjectRoot` — é exatamente o
+      // ponto deste caminho paralelo (T-04-10: a pasta vem só do diálogo
+      // OS-nativo, nunca digitada/construída, e chega aqui como argumento
+      // de spawn, nunca concatenada numa string de shell).
+      await spawnSession(sessionId, rawFolder, () => {});
+      await writeSession(sessionId, "/gsd-new-project\r");
 
       return sessionId;
     },
