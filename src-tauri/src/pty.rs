@@ -25,7 +25,7 @@ use std::sync::Mutex;
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 use serde::Serialize;
 use tauri::ipc::Channel;
-use tauri::State;
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::process_guard::TreeGuard;
 
@@ -50,6 +50,17 @@ impl fmt::Display for PtyError {
 }
 
 impl std::error::Error for PtyError {}
+
+/// Payload do evento global `pty:session-exited` — carrega só o id da sessão
+/// morta, o mínimo necessário para o frontend (session-store, plano futuro)
+/// remover/re-abrir a entrada correspondente. `camelCase` para o lado JS ler
+/// `sessionId`, mesma convenção de `WatcherDegradedPayload` em
+/// `planning_watcher.rs`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExitedPayload {
+    pub session_id: String,
+}
 
 /// Uma sessão de PTY viva: o par master/writer/child do `portable-pty`, o
 /// `TreeGuard` associado no instante do spawn, e o handle da thread leitora
@@ -111,6 +122,22 @@ impl PtyManager {
             .map_err(|e| PtyError::Io(e.to_string()))?;
         Ok(())
     }
+
+    /// Remove a entrada de uma sessão que já terminou (EOF/erro na leitura,
+    /// chamado pela thread leitora de `spawn_session` depois que
+    /// `pump_pty_output` retorna) — retorna `true` exatamente uma vez para
+    /// uma entrada viva, `false` para um id já removido/desconhecido. Sem
+    /// isso, `spawn_session` para o MESMO id (o fluxo de lazy-restore
+    /// reaproveita ids persistidos) sempre falharia com
+    /// `PtyError::AlreadyExists` depois da primeira saída natural. Mesmo
+    /// estilo de lock poison-safe de `kill_all`/`write`.
+    pub fn remove_exited(&self, session_id: &str) -> bool {
+        let mut sessions = match self.0.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        sessions.remove(session_id).is_some()
+    }
 }
 
 /// Loop de leitura testável isoladamente: lê do `reader` até EOF (`Ok(0)`)
@@ -130,6 +157,24 @@ pub fn pump_pty_output(mut reader: impl Read, mut sink: impl FnMut(Vec<u8>)) {
     }
 }
 
+/// Executado pela thread leitora de `spawn_session` logo depois que
+/// `pump_pty_output` retorna (EOF/erro — o processo filho saiu): purga a
+/// entrada morta do `manager` e reporta a saída via `notify`. `notify` é um
+/// callback genérico (em vez de amarrado a `tauri::AppHandle::emit`) pelo
+/// MESMO motivo de `pump_pty_output` ter um parâmetro `sink` genérico —
+/// testável sem precisar de um `AppHandle` real (ver
+/// `handle_session_exit_purges_and_notifies_after_pump_returns` em
+/// `mod tests`). Em produção, `notify` é
+/// `|payload| { let _ = app.emit("pty:session-exited", payload); }`.
+pub fn handle_session_exit(
+    manager: &PtyManager,
+    session_id: String,
+    mut notify: impl FnMut(ExitedPayload),
+) {
+    manager.remove_exited(&session_id);
+    notify(ExitedPayload { session_id });
+}
+
 /// Sobe o `claude` (ou o binário substituto usado em teste manual) num PTY
 /// real, no `cwd` fornecido. `cwd` DEVE vir exclusivamente do `root` já
 /// canonicalizado por `project::validate_project_root` (Fase 1) — o
@@ -144,9 +189,11 @@ pub fn pump_pty_output(mut reader: impl Read, mut sink: impl FnMut(Vec<u8>)) {
 /// processo Tauri/app é injetada (mitigação T-02-04).
 #[tauri::command]
 pub fn spawn_session(
+    app: AppHandle,
     state: State<'_, PtyManager>,
     session_id: String,
     cwd: String,
+    args: Vec<String>,
     on_event: Channel<Vec<u8>>,
 ) -> Result<(), PtyError> {
     {
@@ -171,6 +218,12 @@ pub fn spawn_session(
 
     let mut cmd = CommandBuilder::new("claude");
     cmd.cwd(&cwd);
+    // Vazio (fluxo de sessão nova, SESS-02) = comportamento byte-a-byte
+    // idêntico ao anterior. `["--resume", id]` (lazy-restore, plano 04-06)
+    // é o único caller previsto além do vazio; o guard de allow-list do id
+    // fica no ÚNICO ponto de chamada do frontend que monta esse array, não
+    // aqui (T-04-04) — `spawn_session` encaminha `args` verbatim por design.
+    cmd.args(&args);
 
     let child = pair
         .slave
@@ -194,6 +247,9 @@ pub fn spawn_session(
         .take_writer()
         .map_err(|e| PtyError::Io(e.to_string()))?;
 
+    let app_for_exit = app.clone();
+    let session_id_for_exit = session_id.clone();
+
     let reader_thread = std::thread::spawn(move || {
         pump_pty_output(reader, move |chunk| {
             // Falha ao enviar (frontend desmontou o Channel) não derruba a
@@ -202,6 +258,16 @@ pub fn spawn_session(
             // ou `RunEvent::ExitRequested` já terão sido chamados de qualquer
             // forma.
             let _ = on_event.send(chunk);
+        });
+        // Loop de leitura terminou — o processo filho saiu (EOF) ou o pipe
+        // quebrou. Purga a entrada morta e notifica o frontend por um evento
+        // GLOBAL, delegado a `handle_session_exit` (extraído com um callback
+        // `notify` genérico em vez de amarrado a `AppHandle::emit`, mesmo
+        // motivo de `pump_pty_output` ter um `sink` genérico — testável sem
+        // precisar de um `AppHandle` real, ver `mod tests`).
+        let manager = app_for_exit.state::<PtyManager>();
+        handle_session_exit(manager.inner(), session_id_for_exit, |payload| {
+            let _ = app_for_exit.emit("pty:session-exited", payload);
         });
     });
 
@@ -329,5 +395,127 @@ mod tests {
         assert!(PtyError::NotFound("a".into()).to_string().contains("NotFound"));
         assert!(PtyError::Spawn("boom".into()).to_string().contains("boom"));
         assert!(PtyError::Io("boom".into()).to_string().contains("boom"));
+    }
+
+    /// Insere uma `PtySession` de verdade (mesmo caminho de `spawn_session`:
+    /// `openpty` → `spawn_command` → `TreeGuard::attach` → `take_writer`) sob
+    /// `session_id` no `manager` — o único jeito de popular o mapa, já que os
+    /// campos de `PtySession` não são construtíveis fora de um spawn real
+    /// (`Box<dyn MasterPty>`/`Box<dyn Child>`/`TreeGuard`). O binário
+    /// substituto (`true` no Unix / `cmd /c exit` no Windows) sai quase
+    /// instantaneamente — suficiente para os testes de `remove_exited`/
+    /// `handle_session_exit` abaixo, que só precisam de UMA entrada viva no
+    /// mapa, não de output real.
+    fn insert_dummy_session(manager: &PtyManager, session_id: &str) {
+        let pty_system = native_pty_system();
+        let pair = pty_system
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .expect("openpty deveria funcionar neste ambiente de teste");
+
+        #[cfg(unix)]
+        let cmd = CommandBuilder::new("true");
+        #[cfg(windows)]
+        let cmd = {
+            let mut cmd = CommandBuilder::new("cmd");
+            cmd.args(["/C", "exit"]);
+            cmd
+        };
+
+        let child = pair
+            .slave
+            .spawn_command(cmd)
+            .expect("binário substituto deveria spawnar neste ambiente de teste");
+        drop(pair.slave);
+
+        let guard = TreeGuard::attach(child.as_ref() as &dyn Child)
+            .expect("TreeGuard::attach deveria funcionar neste ambiente de teste");
+        let writer = pair
+            .master
+            .take_writer()
+            .expect("take_writer deveria funcionar neste ambiente de teste");
+
+        let session = PtySession {
+            master: pair.master,
+            writer,
+            child,
+            guard,
+            reader_thread: None,
+        };
+
+        manager
+            .0
+            .lock()
+            .expect("lock do manager de teste não deveria estar poisoned")
+            .insert(session_id.to_string(), session);
+    }
+
+    #[test]
+    fn remove_exited_returns_true_once_then_false() {
+        let manager = PtyManager::default();
+        let session_id = "remove-exited-test-session";
+        insert_dummy_session(&manager, session_id);
+
+        assert!(
+            manager.remove_exited(session_id),
+            "primeira chamada deveria remover a entrada viva e retornar true"
+        );
+        assert!(
+            !manager.remove_exited(session_id),
+            "segunda chamada sobre um id já removido deveria retornar false"
+        );
+    }
+
+    /// Extensão do teste substitute-binary acima (`pump_pty_output_forwards_bytes...`):
+    /// prova que, depois de `pump_pty_output` retornar para um processo real,
+    /// `handle_session_exit` purga a entrada correspondente do `PtyManager` E
+    /// dispara `notify` com o `session_id` certo — exatamente o que a thread
+    /// leitora de `spawn_session` faz, só que sem precisar de um `AppHandle`
+    /// real (T-04-06: a saída nunca viaja pelo `Channel<Vec<u8>>` de bytes).
+    #[test]
+    fn handle_session_exit_purges_entry_and_notifies_after_pump_returns() {
+        let manager = PtyManager::default();
+        let session_id = "handle-session-exit-test-session";
+        insert_dummy_session(&manager, session_id);
+
+        #[cfg(unix)]
+        let mut child = Command::new("printf")
+            .arg("bye-pty")
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("printf deveria estar disponível neste ambiente de teste");
+
+        #[cfg(windows)]
+        let mut child = Command::new("cmd")
+            .args(["/C", "echo", "bye-pty"])
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("cmd deveria estar disponível neste ambiente de teste");
+
+        let stdout = child.stdout.take().expect("stdout deveria estar piped");
+        pump_pty_output(stdout, |_chunk| {});
+        child
+            .wait()
+            .expect("o processo substituto deveria terminar normalmente");
+
+        let notified: Arc<StdMutex<Vec<ExitedPayload>>> = Arc::new(StdMutex::new(Vec::new()));
+        let notified_for_callback = notified.clone();
+
+        handle_session_exit(&manager, session_id.to_string(), move |payload| {
+            notified_for_callback.lock().unwrap().push(payload);
+        });
+
+        assert!(
+            !manager.remove_exited(session_id),
+            "handle_session_exit já deveria ter purgado a entrada — nada sobra para remover"
+        );
+
+        let got = notified.lock().unwrap();
+        assert_eq!(got.len(), 1, "notify deveria disparar exatamente uma vez");
+        assert_eq!(got[0].session_id, session_id);
     }
 }
