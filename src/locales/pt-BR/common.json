@@ -5,5 +5,16 @@
   },
   "actions": {
     "backToHome": "Voltar para a página inicial"
+  },
+  "language": {
+    "groupLabel": "Idioma da interface",
+    "pt": {
+      "short": "PT",
+      "full": "Português"
+    },
+    "en": {
+      "short": "EN",
+      "full": "English"
+    }
   }
 }

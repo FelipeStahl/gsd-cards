@@ -41,6 +41,8 @@ const {
   removeRecent,
   upsertPersistedSession,
   getPersistedSessions,
+  setLanguage,
+  getLanguage,
   appStore,
 } = await import("./app-store");
 
@@ -171,5 +173,33 @@ describe("app-store — metadados de sessão persistidos (SESS-04, 04-06-PLAN.md
 
     const ids = (await getPersistedSessions("/repo")).map((s) => s.id).sort();
     expect(ids).toEqual(["session-a", "session-b"]);
+  });
+});
+
+describe("app-store — idioma persistido (DIST-01, 05-01-PLAN.md)", () => {
+  it("getLanguage() resolve null quando nada foi persistido ainda", async () => {
+    expect(await getLanguage()).toBeNull();
+  });
+
+  it("setLanguage('en') então getLanguage() resolve 'en' — round-trip serializado por withStoreLock", async () => {
+    await setLanguage("en");
+
+    expect(await getLanguage()).toBe("en");
+  });
+
+  it("setLanguage chama save() explicitamente (autoSave desabilitado)", async () => {
+    const store = appStore as unknown as FakeLazyStore;
+    const before = store.saveCalls;
+
+    await setLanguage("pt-BR");
+
+    expect(store.saveCalls).toBe(before + 1);
+  });
+
+  it("T-05-01: getLanguage() resolve null quando o valor persistido é uma string corrompida/não reconhecida — nunca propaga o valor bruto (enum fechado)", async () => {
+    const store = appStore as unknown as FakeLazyStore;
+    await store.set("language", "fr-CA");
+
+    expect(await getLanguage()).toBeNull();
   });
 });

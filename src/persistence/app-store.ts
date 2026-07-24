@@ -169,3 +169,39 @@ export async function getPersistedSessions(projectRoot: string): Promise<Persist
   const sessions = (await appStore.get<PersistedSessionEntry[]>(SESSIONS_KEY)) ?? [];
   return sessions.filter((session) => session.projectRoot === projectRoot);
 }
+
+/** Enum fechado (05-CONTEXT.md "Restauração no startup") — só estes dois
+ * valores são um idioma válido nesta fase; um terceiro idioma é uma decisão
+ * de produto nova, não uma mudança de config (05-UI-SPEC.md zero-one-many). */
+export const SUPPORTED_LANGUAGES = ["pt-BR", "en"] as const;
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
+const LANGUAGE_KEY = "language";
+
+/**
+ * Persiste o idioma escolhido (DIST-01) — mesmo padrão writer-through-lock
+ * de `upsertRecent`/`setSessionName` (set + save dentro de `withStoreLock`).
+ */
+export async function setLanguage(lng: SupportedLanguage): Promise<void> {
+  return withStoreLock(async () => {
+    await appStore.set(LANGUAGE_KEY, lng);
+    await appStore.save();
+  });
+}
+
+/**
+ * Lê o idioma persistido — leitura sem lock (mesmo padrão de `getRecents`),
+ * mas com uma validação extra que os outros leitores não precisam: o valor
+ * gravado em `app-state.json` é entrada não confiável (T-05-01, editável à
+ * mão pelo usuário) que reentra no app e alimentaria `i18n.changeLanguage`.
+ * Só devolve o valor quando ele está no enum fechado `SUPPORTED_LANGUAGES`;
+ * qualquer outra coisa (string corrompida, idioma removido, lixo) resolve
+ * para `null` — NUNCA propaga o valor bruto adiante, quem chama cai para o
+ * fallback de `navigator.language`/default.
+ */
+export async function getLanguage(): Promise<SupportedLanguage | null> {
+  const value = await appStore.get<string>(LANGUAGE_KEY);
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(value ?? "")
+    ? (value as SupportedLanguage)
+    : null;
+}

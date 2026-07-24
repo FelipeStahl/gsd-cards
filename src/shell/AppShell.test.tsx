@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { open } from "@tauri-apps/plugin-dialog";
 
+import { i18n } from "../i18n";
 import { ok } from "../planning/parse-result";
 import { useBoardStore } from "../stores/board-store";
 import { useSessionStore } from "../stores/session-store";
@@ -15,12 +16,19 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 // mockado no nível do módulo (não do plugin `@tauri-apps/plugin-store` cru)
 // para que TODOS os testes deste arquivo (inclusive os que nem tocam a
 // home) nunca façam uma chamada real de `invoke` ao plugin de store.
+// `getLanguage`/`setLanguage` (05-01-PLAN.md, DIST-01) entram no mesmo mock
+// pelo mesmo motivo: o boot-restore effect do AppShell chama `getLanguage()`
+// incondicionalmente, mesmo nos testes que não tocam idioma nenhum.
 const getRecentsMock = vi.fn();
 const upsertRecentMock = vi.fn();
+const getLanguageMock = vi.fn();
+const setLanguageMock = vi.fn();
 vi.mock("../persistence/app-store", () => ({
   getRecents: (...args: unknown[]) => getRecentsMock(...args),
   upsertRecent: (...args: unknown[]) => upsertRecentMock(...args),
   removeRecent: vi.fn(),
+  getLanguage: (...args: unknown[]) => getLanguageMock(...args),
+  setLanguage: (...args: unknown[]) => setLanguageMock(...args),
 }));
 
 // `ProjectCard` (04-04-PLAN.md) tem sua própria suíte dedicada
@@ -72,7 +80,25 @@ beforeEach(() => {
   });
   getRecentsMock.mockReset().mockResolvedValue([]);
   upsertRecentMock.mockReset().mockResolvedValue(undefined);
+  // Default "pt-BR" (não `null`) de propósito: o jsdom deste ambiente de
+  // teste relata `navigator.language === "en-US"` por padrão, então um
+  // default `null` acionaria o fallback de navigator em TODOS os testes
+  // deste arquivo (inclusive os que nunca tocam idioma), trocando a UI para
+  // "en" e quebrando os `getByText` em pt-BR já existentes. Um "pt-BR"
+  // salvo simula o caso comum (usuário já tem uma escolha persistida) e
+  // mantém os testes pré-existentes neutros; os testes de boot-restore
+  // abaixo sobrescrevem este mock explicitamente por teste.
+  getLanguageMock.mockReset().mockResolvedValue("pt-BR");
+  setLanguageMock.mockReset().mockResolvedValue(undefined);
   vi.mocked(open).mockReset().mockResolvedValue(null);
+});
+
+afterEach(async () => {
+  // O boot-restore effect (DIST-01) muda `i18n.language` de verdade — sem
+  // resetar (e AWAIT'ar) aqui, um teste que restaura "en" vazaria para os
+  // testes seguintes DESTE arquivo (mesmo registro de módulo, isolamento do
+  // vitest é por arquivo, não por teste).
+  await i18n.changeLanguage("pt-BR");
 });
 
 describe("AppShell", () => {
@@ -220,5 +246,65 @@ describe("AppShell", () => {
       "validate_project_root",
       expect.objectContaining({ root: "/home/x/gsd-cards" }),
     );
+  });
+});
+
+describe("AppShell — restauração de idioma no boot (DIST-01, T-05-01)", () => {
+  const originalNavigatorLanguage = window.navigator.language;
+
+  afterEach(() => {
+    Object.defineProperty(window.navigator, "language", {
+      value: originalNavigatorLanguage,
+      configurable: true,
+    });
+    vi.restoreAllMocks();
+  });
+
+  // Cada teste cria seu PRÓPRIO spy de `i18n.changeLanguage` (sem
+  // implementação real, `mockResolvedValue` no-op) e restaura no afterEach —
+  // isola completamente da mutação real do singleton global `i18n.language`,
+  // que outros testes deste mesmo arquivo (SessionSidebar, EmptyState etc.)
+  // continuam assumindo em pt-BR. A asserção verifica a CHAMADA (o que o
+  // `<behavior>` do plano especifica), não o estado final assentado.
+  function spyOnChangeLanguage() {
+    return vi.spyOn(i18n, "changeLanguage").mockImplementation(
+      (() => Promise.resolve(i18n.t)) as typeof i18n.changeLanguage,
+    );
+  }
+
+  it("idioma salvo 'en' (enum válido, diferente do default pt-BR): o boot effect chama changeLanguage('en')", async () => {
+    getLanguageMock.mockResolvedValue("en");
+    const changeLanguageSpy = spyOnChangeLanguage();
+
+    render(<AppShell />);
+
+    await waitFor(() => {
+      expect(changeLanguageSpy).toHaveBeenCalledWith("en");
+    });
+  });
+
+  it("sem idioma salvo + navigator.language começa com 'en': aplica o fallback changeLanguage('en')", async () => {
+    getLanguageMock.mockResolvedValue(null);
+    Object.defineProperty(window.navigator, "language", { value: "en-US", configurable: true });
+    const changeLanguageSpy = spyOnChangeLanguage();
+
+    render(<AppShell />);
+
+    await waitFor(() => {
+      expect(changeLanguageSpy).toHaveBeenCalledWith("en");
+    });
+  });
+
+  it("sem idioma salvo + navigator.language não-en: mantém o default pt-BR, nunca chama changeLanguage", async () => {
+    getLanguageMock.mockResolvedValue(null);
+    Object.defineProperty(window.navigator, "language", { value: "fr-FR", configurable: true });
+    const changeLanguageSpy = spyOnChangeLanguage();
+
+    render(<AppShell />);
+
+    await waitFor(() => {
+      expect(getLanguageMock).toHaveBeenCalled();
+    });
+    expect(changeLanguageSpy).not.toHaveBeenCalled();
   });
 });
