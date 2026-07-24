@@ -2,5 +2,8 @@
   "app": {
     "title": "GSD Cards",
     "loading": "Carregando…"
+  },
+  "actions": {
+    "backToHome": "Voltar para a página inicial"
   }
 }

@@ -2,5 +2,8 @@
   "app": {
     "title": "GSD Cards",
     "loading": "Loading…"
+  },
+  "actions": {
+    "backToHome": "Back to home"
   }
 }

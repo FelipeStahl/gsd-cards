@@ -10,6 +10,7 @@ import { statusDotVariants, type StatusTone } from "../components/StatusBadge";
 import { SyncIndicator } from "../components/SyncIndicator";
 import { selectColumnCounts, useBoardStore } from "../stores/board-store";
 import type { BoardColumnId } from "../planning/status";
+import { ProjectSwitcherButton } from "./ProjectSwitcherButton";
 
 const PLACEHOLDER = "—";
 
@@ -62,6 +63,8 @@ export function Header() {
         gap: "var(--spacing-md)",
       }}
     >
+      <ProjectSwitcherButton />
+
       <span
         style={{
           fontSize: "var(--font-size-display)",
