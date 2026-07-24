@@ -19,9 +19,14 @@ const { useSessionStore } = await import("../../stores/session-store");
 const initialBoardState = useBoardStore.getState();
 const initialSessionState = useSessionStore.getState();
 
-function openProjectAt(root: string) {
+function openProjectAt(root: string, projectName = "repo") {
   useBoardStore.setState((state) => {
-    state.project = { root } as ReturnType<typeof useBoardStore.getState>["project"];
+    state.project = { root, projectName } as ReturnType<typeof useBoardStore.getState>["project"];
+    // PROJ-05 (04-05-PLAN.md): a sidebar filtra `sessions[]` por
+    // `activeProjectRoot`, não mais por `project.root` cru — o helper de
+    // teste precisa espelhar o que `openProject`/`switchProject` fazem de
+    // verdade (setam os dois campos numa única transição).
+    state.activeProjectRoot = root;
   });
 }
 
@@ -55,7 +60,7 @@ describe("SessionSidebar — zero-one-many", () => {
   it("uma sessão live sem histórico: mostra só o header 'Ativas', sem 'Histórico' órfão", () => {
     openProjectAt("/repo");
     useSessionStore.setState({
-      sessions: [{ id: "session-live-1", lastModified: new Date(), origin: "live" }],
+      sessions: [{ id: "session-live-1", lastModified: new Date(), origin: "live", projectRoot: "/repo" }],
     });
 
     render(<SessionSidebar />);
@@ -65,8 +70,11 @@ describe("SessionSidebar — zero-one-many", () => {
   });
 
   it("uma sessão histórica sem ativas: mostra só o header 'Histórico', sem 'Ativas' órfão", () => {
+    openProjectAt("/repo");
     useSessionStore.setState({
-      sessions: [{ id: "session-hist-1", lastModified: new Date(), origin: "historical" }],
+      sessions: [
+        { id: "session-hist-1", lastModified: new Date(), origin: "historical", projectRoot: "/repo" },
+      ],
     });
 
     render(<SessionSidebar />);
@@ -76,11 +84,22 @@ describe("SessionSidebar — zero-one-many", () => {
   });
 
   it("populado (live + historical): mostra os dois grupos, ordenados por lastModified desc", () => {
+    openProjectAt("/repo");
     useSessionStore.setState({
       sessions: [
-        { id: "aaaaaaaa-old", lastModified: new Date("2026-01-01T00:00:00Z"), origin: "historical" },
-        { id: "zzzzzzzz-new", lastModified: new Date("2026-06-01T00:00:00Z"), origin: "historical" },
-        { id: "live-session", lastModified: new Date(), origin: "live" },
+        {
+          id: "aaaaaaaa-old",
+          lastModified: new Date("2026-01-01T00:00:00Z"),
+          origin: "historical",
+          projectRoot: "/repo",
+        },
+        {
+          id: "zzzzzzzz-new",
+          lastModified: new Date("2026-06-01T00:00:00Z"),
+          origin: "historical",
+          projectRoot: "/repo",
+        },
+        { id: "live-session", lastModified: new Date(), origin: "live", projectRoot: "/repo" },
       ],
     });
 
@@ -95,6 +114,42 @@ describe("SessionSidebar — zero-one-many", () => {
       el.getAttribute("title"),
     );
     expect(rowIds).toEqual(["live-session", "zzzzzzzz-new", "aaaaaaaa-old"]);
+  });
+});
+
+describe("SessionSidebar — escopo por projeto (PROJ-05, corrige 04-RESEARCH.md Pitfall 1)", () => {
+  it("uma sessão de outro projeto (B) NÃO renderiza enquanto o projeto A está ativo; as sessões de A renderizam", () => {
+    openProjectAt("/repo-a", "repo-a");
+    useSessionStore.setState({
+      sessions: [
+        { id: "session-a-1", lastModified: new Date(), origin: "live", projectRoot: "/repo-a" },
+        { id: "session-b-1", lastModified: new Date(), origin: "live", projectRoot: "/repo-b" },
+      ],
+    });
+
+    const { container } = render(<SessionSidebar />);
+
+    const rowIds = Array.from(container.querySelectorAll(".session-row")).map((el) =>
+      el.getAttribute("title"),
+    );
+    expect(rowIds).toEqual(["session-a-1"]);
+  });
+
+  it("mostra a faixa de escopo com o nome do projeto ativo quando um projeto está aberto", () => {
+    openProjectAt("/repo-a", "repo-a");
+    useSessionStore.setState({
+      sessions: [{ id: "session-a-1", lastModified: new Date(), origin: "live", projectRoot: "/repo-a" }],
+    });
+
+    render(<SessionSidebar />);
+
+    expect(screen.getByText("Mostrando sessões de: repo-a")).toBeInTheDocument();
+  });
+
+  it("não mostra a faixa de escopo quando nenhum projeto está aberto", () => {
+    render(<SessionSidebar />);
+
+    expect(screen.queryByText(/Mostrando sessões de:/)).not.toBeInTheDocument();
   });
 });
 

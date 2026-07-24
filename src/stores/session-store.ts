@@ -85,6 +85,23 @@ export interface SessionDescriptor {
    * nunca recebe este campo — nunca tem `PtySession` viva a observar).
    */
   activity?: TerminalActivity;
+  /**
+   * Raiz do projeto dono desta sessão (PROJ-05, 04-05-PLAN.md) — populado em
+   * TODO ponto de criação/descoberta (`createSession`, `createProjectSession`,
+   * `mergeSessionDescriptors`). `SessionSidebar` filtra `sessions[]` por
+   * `activeProjectRoot` usando este campo, corrigindo o bug pré-existente de
+   * mistura de sessões entre projetos (04-RESEARCH.md Pitfall 1). Também
+   * load-bearing para SESS-04 (04-06): `resumeSession` deve ler o `cwd` da
+   * PRÓPRIA `projectRoot` persistida da sessão, nunca de `activeProjectRoot`.
+   */
+  projectRoot: string;
+  /**
+   * Nome customizado (SESS-05, 04-05-PLAN.md) — `undefined` até o usuário
+   * renomear via `renameSession`. Quando ausente, todo consumidor do label
+   * cai para o derivado `"Sessão " + id.slice(0,8)`. Persistido via
+   * `app-store.ts` (`setSessionName`), nunca em `.planning/`.
+   */
+  name?: string;
 }
 
 interface SessionStoreState {
@@ -178,6 +195,7 @@ export function toSessionError(error: unknown): SessionError {
 function mergeSessionDescriptors(
   existing: SessionDescriptor[],
   discovered: SessionSignal[],
+  projectRoot: string,
 ): SessionDescriptor[] {
   const byId = new Map<string, SessionDescriptor>();
   for (const session of existing) {
@@ -189,7 +207,12 @@ function mergeSessionDescriptors(
     if (previous) {
       byId.set(signal.id, { ...previous, lastModified: signal.lastModified });
     } else {
-      byId.set(signal.id, { id: signal.id, lastModified: signal.lastModified, origin: "historical" });
+      byId.set(signal.id, {
+        id: signal.id,
+        lastModified: signal.lastModified,
+        origin: "historical",
+        projectRoot,
+      });
     }
   }
 
@@ -233,7 +256,7 @@ export const useSessionStore = create<SessionStoreState>()(
         state.activeSessionId = sessionId;
         state.lastFocusedSessionId = sessionId;
         state.error = null;
-        state.sessions.push({ id: sessionId, lastModified: new Date(), origin: "live" });
+        state.sessions.push({ id: sessionId, lastModified: new Date(), origin: "live", projectRoot: root });
       });
 
       // CR-01: wire ACT-03 activity classification for the FULL lifetime of
@@ -269,7 +292,12 @@ export const useSessionStore = create<SessionStoreState>()(
         state.activeSessionId = sessionId;
         state.lastFocusedSessionId = sessionId;
         state.error = null;
-        state.sessions.push({ id: sessionId, lastModified: new Date(), origin: "live" });
+        state.sessions.push({
+          id: sessionId,
+          lastModified: new Date(),
+          origin: "live",
+          projectRoot: rawFolder,
+        });
       });
 
       // CR-01: mesma disciplina de `createSession` — atividade wireada para
@@ -345,7 +373,7 @@ export const useSessionStore = create<SessionStoreState>()(
 
       const discovered = await listSessions(encodedDir);
       set((state) => {
-        state.sessions = mergeSessionDescriptors(state.sessions, discovered);
+        state.sessions = mergeSessionDescriptors(state.sessions, discovered, projectRoot);
       });
     },
 

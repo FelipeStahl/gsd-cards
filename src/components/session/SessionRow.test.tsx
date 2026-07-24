@@ -21,6 +21,7 @@ function makeSession(overrides: Partial<SessionDescriptor> = {}): SessionDescrip
     id: "session-a3f91c2dabc",
     lastModified: new Date("2026-07-01T00:00:00Z"),
     origin: "live",
+    projectRoot: "/repo",
     ...overrides,
   };
 }

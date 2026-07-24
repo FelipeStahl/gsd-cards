@@ -108,6 +108,15 @@ describe("createSession", () => {
     const session = useSessionStore.getState().sessions.find((s) => s.id === id);
     expect(session?.origin).toBe("live");
   });
+
+  it("tag a sessão criada com o projectRoot do projeto aberto (PROJ-05)", () => {
+    openProjectAt("/repo");
+
+    const id = useSessionStore.getState().createSession();
+
+    const session = useSessionStore.getState().sessions.find((s) => s.id === id);
+    expect(session?.projectRoot).toBe("/repo");
+  });
 });
 
 describe("createProjectSession", () => {
@@ -135,6 +144,15 @@ describe("createProjectSession", () => {
     expect(state.activeSessionId).toBe(id);
     expect(state.lastFocusedSessionId).toBe(id);
     expect(state.sessions.find((session) => session.id === id)?.origin).toBe("live");
+  });
+
+  it("tag a sessão criada com a pasta crua como projectRoot (PROJ-05)", async () => {
+    invokeMock.mockResolvedValueOnce("/home/user/.claude/projects/-nova-pasta");
+
+    const id = await useSessionStore.getState().createProjectSession("/nova-pasta");
+
+    const state = useSessionStore.getState();
+    expect(state.sessions.find((session) => session.id === id)?.projectRoot).toBe("/nova-pasta");
   });
 
   it("chama invoke(register_sessions_scope) com a pasta crua, mas degrada silenciosamente se ele falhar", async () => {
@@ -393,7 +411,7 @@ describe("discoverSessions (merge incremental — SESS-01)", () => {
     expect(invokeMock).toHaveBeenCalledWith("register_sessions_scope", { projectRoot: "/repo" });
     const state = useSessionStore.getState();
     expect(state.sessions).toHaveLength(1);
-    expect(state.sessions[0]).toMatchObject({ id: "session-a", origin: "historical" });
+    expect(state.sessions[0]).toMatchObject({ id: "session-a", origin: "historical", projectRoot: "/repo" });
   });
 
   it("nunca rebaixa uma sessão live já rastreada para historical mesmo se o .jsonl correspondente também for descoberto", async () => {

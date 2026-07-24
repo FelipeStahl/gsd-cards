@@ -126,7 +126,9 @@ describe("PhaseCard — ação contextual de fase (ACT-01)", () => {
     useSessionStore.setState((state) => {
       state.activeSessionId = "session-a1";
       state.lastFocusedSessionId = "session-a1";
-      state.sessions = [{ id: "session-a1", lastModified: new Date(), origin: "live" }];
+      state.sessions = [
+        { id: "session-a1", lastModified: new Date(), origin: "live", projectRoot: "/repo" },
+      ];
     });
     render(<PhaseCard phase={makePhase({ id: "03", diskStatus: "planned" })} />);
     fireEvent.click(screen.getByRole("button", { name: "Executar" }));

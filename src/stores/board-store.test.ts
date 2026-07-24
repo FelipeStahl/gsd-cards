@@ -170,7 +170,7 @@ describe("switchProject — re-sync de watcher único (Pattern 3)", () => {
     // separado, intocado por board-store (session-store.ts não é importado
     // nem referenciado por switchProject).
     useSessionStore.setState((state) => {
-      state.sessions.push({ id: "session-a", lastModified: null, origin: "live" });
+      state.sessions.push({ id: "session-a", lastModified: null, origin: "live", projectRoot: ROOT_A });
     });
     const sessionsBeforeSwitch = useSessionStore.getState().sessions;
 

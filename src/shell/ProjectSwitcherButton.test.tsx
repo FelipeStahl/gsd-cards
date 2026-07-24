@@ -31,7 +31,7 @@ describe("ProjectSwitcherButton", () => {
       project: { root: "/repo-a" } as ReturnType<typeof useBoardStore.getState>["project"],
     });
     useSessionStore.setState((state) => {
-      state.sessions.push({ id: "session-a", lastModified: null, origin: "live" });
+      state.sessions.push({ id: "session-a", lastModified: null, origin: "live", projectRoot: "/repo-a" });
     });
     const sessionsBeforeClick = useSessionStore.getState().sessions;
 

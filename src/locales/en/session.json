@@ -10,7 +10,8 @@
     "groups": {
       "active": "Active",
       "history": "History"
-    }
+    },
+    "scopeBanner": "Showing sessions from: {{projectName}}"
   },
   "empty": {
     "heading": "No sessions yet",

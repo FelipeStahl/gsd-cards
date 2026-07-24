@@ -40,7 +40,9 @@ function withLiveActiveSession(sessionId = "session-a1", activity?: "idle" | "bu
   useSessionStore.setState((state) => {
     state.activeSessionId = sessionId;
     state.lastFocusedSessionId = sessionId;
-    state.sessions = [{ id: sessionId, lastModified: new Date(), origin: "live", activity }];
+    state.sessions = [
+      { id: sessionId, lastModified: new Date(), origin: "live", activity, projectRoot: "/repo" },
+    ];
   });
   return sessionId;
 }

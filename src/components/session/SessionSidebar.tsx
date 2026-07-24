@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 
 import { EmptyState } from "../EmptyState";
 import { SessionRow } from "./SessionRow";
+import { SidebarScopeBanner } from "./SidebarScopeBanner";
 import { ToolMissingState } from "./ToolMissingState";
 import { checkClaudeOnPath, deriveToolMissingState } from "../../dependencies/check";
 import { useBoardStore } from "../../stores/board-store";
@@ -42,11 +43,17 @@ const GROUP_LABEL_STYLE = {
 export function SessionSidebar() {
   const { t } = useTranslation("session");
   const projectRoot = useBoardStore((state) => state.project?.root ?? null);
+  const projectName = useBoardStore((state) => state.project?.projectName ?? null);
   // Ausência de projeto aberto nunca deve, por si só, disparar o
   // ToolMissingState de gsd-core (esse é um sinal por-projeto) — default
   // "presente" até um projeto real ser validado.
   const hasGsdCore = useBoardStore((state) => state.project?.hasGsdCore ?? true);
-  const sessions = useSessionStore((state) => state.sessions);
+  // PROJ-05 (04-05-PLAN.md, corrige 04-RESEARCH.md Pitfall 1): a sidebar
+  // filtra por `activeProjectRoot`, nunca exibe `sessions[]` cru — sessão de
+  // outro projeto aberto simultaneamente é escondida, não perdida.
+  const activeProjectRoot = useBoardStore((state) => state.activeProjectRoot);
+  const allSessions = useSessionStore((state) => state.sessions);
+  const sessions = allSessions.filter((session) => session.projectRoot === activeProjectRoot);
   const activeSessionId = useSessionStore((state) => state.activeSessionId);
   const createSession = useSessionStore((state) => state.createSession);
   const focusSession = useSessionStore((state) => state.focusSession);
@@ -99,6 +106,7 @@ export function SessionSidebar() {
         minHeight: 0,
       }}
     >
+      {projectRoot && projectName ? <SidebarScopeBanner projectName={projectName} /> : null}
       <div
         style={{
           display: "flex",

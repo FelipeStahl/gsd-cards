@@ -51,9 +51,9 @@ describe("DrawerRail — badge de contagem de sessões vivas", () => {
   it("mostra o count de sessões live quando ≥1 estão vivas", () => {
     useSessionStore.setState({
       sessions: [
-        { id: "s1", lastModified: new Date(), origin: "live" },
-        { id: "s2", lastModified: new Date(), origin: "live" },
-        { id: "s3", lastModified: new Date(), origin: "historical" },
+        { id: "s1", lastModified: new Date(), origin: "live", projectRoot: "/repo" },
+        { id: "s2", lastModified: new Date(), origin: "live", projectRoot: "/repo" },
+        { id: "s3", lastModified: new Date(), origin: "historical", projectRoot: "/repo" },
       ],
     });
 
@@ -67,7 +67,7 @@ describe("DrawerRail — reexpandir para a última sessão focada", () => {
   it("clicar o rail recolhido reexpande para lastFocusedSessionId sem matar/recriar a sessão", () => {
     openProjectAt("/repo");
     useSessionStore.setState({
-      sessions: [{ id: "s1", lastModified: new Date(), origin: "live" }],
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", projectRoot: "/repo" }],
       lastFocusedSessionId: "s1",
       activeSessionId: null,
     });
@@ -104,7 +104,7 @@ describe("DrawerRail — GSD command toolbar (ACT-04)", () => {
     useSessionStore.setState({
       activeSessionId: "s1",
       lastFocusedSessionId: "s1",
-      sessions: [{ id: "s1", lastModified: new Date(), origin: "live" }],
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", projectRoot: "/repo" }],
     });
 
     render(<DrawerRail />);
@@ -116,7 +116,7 @@ describe("DrawerRail — GSD command toolbar (ACT-04)", () => {
     useSessionStore.setState({
       activeSessionId: "s1",
       lastFocusedSessionId: "s1",
-      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "idle" }],
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "idle", projectRoot: "/repo" }],
     });
     writeSessionMock.mockResolvedValue(undefined);
 
@@ -132,7 +132,7 @@ describe("DrawerRail — GSD command toolbar (ACT-04)", () => {
     useSessionStore.setState({
       activeSessionId: "s1",
       lastFocusedSessionId: "s1",
-      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "busy" }],
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "busy", projectRoot: "/repo" }],
     });
 
     render(<DrawerRail />);
@@ -148,7 +148,7 @@ describe("DrawerRail — GSD command toolbar (ACT-04)", () => {
     useSessionStore.setState({
       activeSessionId: "s1",
       lastFocusedSessionId: "s1",
-      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "idle" }],
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "idle", projectRoot: "/repo" }],
     });
 
     render(<DrawerRail />);
@@ -164,7 +164,7 @@ describe("DrawerRail — GSD command toolbar (ACT-04)", () => {
     useSessionStore.setState({
       activeSessionId: "s1",
       lastFocusedSessionId: "s1",
-      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "idle" }],
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "idle", projectRoot: "/repo" }],
     });
 
     render(<DrawerRail />);
