@@ -41,8 +41,16 @@ import type {
   PhaseModel,
   ProjectStateModel,
 } from "../planning/model";
+import { upsertRecent } from "../persistence/app-store";
 
 export type BoardStatus = "idle" | "opening" | "open" | "error";
+
+/** Qual tela o `AppShell` renderiza (04-01-PLAN.md Pattern 1) — nunca um
+ * router: home é um ramo de renderização condicional, não uma rota. Default
+ * `"board"` para que os fluxos single-project pré-existentes (Fases 1-3)
+ * continuem exatamente como antes; `openProject` bem-sucedido garante
+ * `"board"` explicitamente. */
+export type BoardView = "home" | "board";
 
 export interface ProjectStoreError {
   kind: ProjectOpenErrorKind | "TooLarge";
@@ -65,6 +73,9 @@ interface BoardStoreState {
   recentlyUpdatedPhaseIds: string[];
   /** Saúde do file watcher (D-16). */
   sync: SyncState;
+  /** Tela ativa (04-01-PLAN.md) — `"home"` renderiza a lista de recentes, `"board"` o shell existente. */
+  view: BoardView;
+  setView: (view: BoardView) => void;
   openProject: (root: string) => Promise<void>;
   closeProject: () => void;
   /** Aplica um lote de caminhos alterados (evento `planning:changed`) em uma única transição de estado. */
@@ -439,6 +450,13 @@ export const useBoardStore = create<BoardStoreState>()(
     error: null,
     recentlyUpdatedPhaseIds: [],
     sync: { state: "idle", lastSyncedAt: null, degradedSince: null, reason: null },
+    view: "board",
+
+    setView: (view: BoardView) => {
+      set((state) => {
+        state.view = view;
+      });
+    },
 
     openProject: async (root: string) => {
       set((state) => {
@@ -493,6 +511,25 @@ export const useBoardStore = create<BoardStoreState>()(
             };
           }
           state.status = "open";
+          state.view = "board";
+        });
+
+        // Casa persistente (04-01-PLAN.md): registra este projeto como
+        // recente em segundo plano — mesma disciplina de fire-and-forget de
+        // `loadMilestoneHistory` logo abaixo (nunca bloqueia a abertura do
+        // board já commitada acima). Sem `set()` dependente do resultado
+        // aqui (a lista de recentes só é lida quando a home renderiza), mas
+        // a falha de escrita é engolida da mesma forma — disco cheio ou
+        // permissão negada nunca deve derrubar um projeto já aberto com
+        // sucesso.
+        void upsertRecent({
+          root: validated.root,
+          name: projectName,
+          lastOpened: new Date().toISOString(),
+        }).catch(() => {
+          // Falha ao persistir o recente não impede o board de abrir — a
+          // lista de recentes é conveniência, não fonte da verdade (o
+          // `.planning/` em disco continua sendo a fonte real do projeto).
         });
 
         // Board (Plano 06, D-08): o histórico de milestones carrega em

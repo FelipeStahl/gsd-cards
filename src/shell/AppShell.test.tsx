@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import { ok } from "../planning/parse-result";
@@ -8,6 +8,17 @@ import { AppShell } from "./AppShell";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: vi.fn().mockResolvedValue(null),
+}));
+
+// A home (04-01-PLAN.md) lê `getRecents()` via `../persistence/app-store` —
+// mockado no nível do módulo (não do plugin `@tauri-apps/plugin-store` cru)
+// para que TODOS os testes deste arquivo (inclusive os que nem tocam a
+// home) nunca façam uma chamada real de `invoke` ao plugin de store.
+const getRecentsMock = vi.fn();
+const upsertRecentMock = vi.fn();
+vi.mock("../persistence/app-store", () => ({
+  getRecents: (...args: unknown[]) => getRecentsMock(...args),
+  upsertRecent: (...args: unknown[]) => upsertRecentMock(...args),
 }));
 
 // SessionSidebar (SESS-01/PROJ-04) invoca `check_claude_on_path` (boot) e
@@ -37,6 +48,8 @@ beforeEach(() => {
     }
     return Promise.reject(new Error("register_sessions_scope indisponível neste teste"));
   });
+  getRecentsMock.mockReset().mockResolvedValue([]);
+  upsertRecentMock.mockReset().mockResolvedValue(undefined);
 });
 
 describe("AppShell", () => {
@@ -105,6 +118,35 @@ describe("AppShell", () => {
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-valuenow",
       "42",
+    );
+  });
+
+  it("view home: renderiza um recente persistido e clicar chama openProject com o root e volta para board", async () => {
+    getRecentsMock.mockResolvedValue([
+      { root: "/home/x/gsd-cards", name: "gsd-cards", lastOpened: "2026-07-24T10:00:00.000Z" },
+    ]);
+    useBoardStore.setState({ view: "home" });
+
+    render(<AppShell />);
+
+    const recentButton = await screen.findByRole("button", { name: "gsd-cards" });
+
+    // Home substitui o shell inteiro (Header/SessionSidebar/DrawerRail não montam).
+    expect(screen.queryByText("Sessões")).not.toBeInTheDocument();
+
+    fireEvent.click(recentButton);
+
+    // openProject engole a falha de invoke (não mockado neste teste) e
+    // segue para status "error" — o que importa aqui é que o fluxo de
+    // clique SEMPRE chama openProject com o root exato do recente e SEMPRE
+    // troca a view de volta para "board" em seguida.
+    await waitFor(() => {
+      expect(useBoardStore.getState().view).toBe("board");
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith(
+      "validate_project_root",
+      expect.objectContaining({ root: "/home/x/gsd-cards" }),
     );
   });
 });
