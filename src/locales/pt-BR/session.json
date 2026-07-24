@@ -28,7 +28,6 @@
     "starting": "Iniciando…",
     "resuming": "Retomando…",
     "exited": "(encerrada)",
-    "historicalTooltip": "Sessão de execuções anteriores — retomar chega na Fase 4",
     "restoredTooltip": "Histórico restaurado — clique para retomar"
   },
   "confirmDelete": {

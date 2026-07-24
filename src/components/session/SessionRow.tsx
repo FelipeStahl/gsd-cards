@@ -26,10 +26,10 @@
 // verdade (`onSelect?.(id)` chama `resumeSession` — nunca mais um hint
 // transitório de placeholder): o comportamento de clique é o MESMO para
 // todas as variantes, o pai (`SessionSidebar`) decide se `onSelect` é
-// `focusSession` (live) ou `resumeSession` (historical/restored). A cópia
-// retirada `session.row.historicalTooltip` fica presa no arquivo de i18n
-// (dead key, nunca deletada) — o hover-tooltip do ícone `History` usa
-// `session.row.restoredTooltip` agora.
+// `focusSession` (live) ou `resumeSession` (historical/restored). O
+// hover-tooltip do ícone `History` usa `session.row.restoredTooltip` (a
+// antiga `session.row.historicalTooltip`, dead key, foi removida dos
+// arquivos de i18n — IN-01 de 04-REVIEW.md).
 //
 // Fase 4, Plano 07 (TERM-04): a variante `exited` (warning, estático, dot +
 // sufixo `session.row.exited`) deixa de ser um slot ocioso e passa a ser

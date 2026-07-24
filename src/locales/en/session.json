@@ -28,7 +28,6 @@
     "starting": "Starting…",
     "resuming": "Resuming…",
     "exited": "(exited)",
-    "historicalTooltip": "Session from previous runs — resume arrives in Phase 4",
     "restoredTooltip": "Restored history — click to resume"
   },
   "confirmDelete": {
