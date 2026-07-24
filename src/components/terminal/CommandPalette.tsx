@@ -222,6 +222,7 @@ export function CommandPalette({
                   key={entry.id}
                   type="button"
                   disabled={isDisabled}
+                  aria-label={label}
                   title={isDisabled && resolution.guardKey ? tBoard(stripBoardPrefix(resolution.guardKey)) : label}
                   onClick={() => activateEntry(entry)}
                   onMouseEnter={() => setSelectedIndex(index)}
