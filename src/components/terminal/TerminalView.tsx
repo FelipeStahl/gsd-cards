@@ -32,7 +32,6 @@ import { gainFocus, loseFocus } from "./focus-algorithm";
 import { resizeSession, setSessionBytesHandler, spawnSession, writeSession } from "../../pty/channel";
 import { useSessionStore } from "../../stores/session-store";
 import { TerminalSearchBar } from "./TerminalSearchBar";
-import { wireTerminalActivity } from "./useTerminalActivity";
 
 // Mesmo padrão de `ArtifactModal.tsx` (T-01-02): só esquema http(s) é
 // aberto — nunca `file:`/`javascript:`/outro esquema arbitrário do output
@@ -127,14 +126,15 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
     let fitAddon: FitAddon | null = null;
     let serializeAddon: SerializeAddon | null = null;
 
-    // ACT-03: classificação de atividade via o consumidor sempre-ativo de
-    // `channel.ts` — independente do redirecionamento de foco abaixo
-    // (`redirectToTerminal`/`redirectToBackground` só afetam
-    // `bytesHandlers`, nunca `activityHandlers`). Mantém a sessão
-    // classificada mesmo quando ela perde foco/vai para background.
-    const stopWiringActivity = wireTerminalActivity(sessionId, (activity) => {
-      useSessionStore.getState().setActivity(sessionId, activity);
-    });
+    // ACT-03 (CR-01 fix): a classificação de atividade NÃO é mais wireada
+    // aqui — vivia presa ao ciclo de vida deste `useEffect` (por
+    // `[sessionId, projectRoot]`), então uma sessão em background ou o
+    // alvo `lastFocusedSessionId` de um drawer recolhido (nenhum
+    // `TerminalView` montado) nunca era classificada, congelando o
+    // busy-guard. Agora `wireTerminalActivity` é chamado uma única vez por
+    // sessão viva em `session-store.ts::createSession`, e só é parado em
+    // `killSession`/`archiveSession` — nunca por este componente montar ou
+    // desmontar.
 
     if (isNewSession) {
       // Registra o Channel/processo ANTES de `gainFocus` abaixo — o
@@ -270,12 +270,6 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
       for (const disposable of disposables) disposable.dispose();
       searchAddonRef.current = null;
       terminalRef.current = null;
-
-      // ACT-03: para o timer de quiescência e desregistra o consumidor de
-      // atividade desta sessão. Redundante-mas-seguro com o delete que
-      // `killSession` já faz no mapa (T-02-02-style leak fix) — cobre tanto
-      // unmount/troca de sessão quanto o caso de kill explícito.
-      stopWiringActivity();
 
       const currentLiveSession = useSessionStore.getState().hasLiveSession(sessionId)
         ? useSessionStore.getState().getOrCreateLiveSession(sessionId)

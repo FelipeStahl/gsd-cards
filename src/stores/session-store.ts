@@ -18,6 +18,7 @@ import { immer } from "zustand/middleware/immer";
 import { invoke } from "@tauri-apps/api/core";
 
 import { createLiveSessionState, type LiveSessionState } from "../components/terminal/focus-algorithm";
+import { wireTerminalActivity } from "../components/terminal/useTerminalActivity";
 import { killSession as killSessionProcess } from "../pty/channel";
 import type { TerminalActivity } from "../pty/activity";
 import { listSessions, type SessionSignal } from "../sessions/discover";
@@ -43,6 +44,20 @@ import { useBoardStore } from "./board-store";
  * que um byte chegou a uma sessão que ninguém está olhando.
  */
 const liveSessions = new Map<string, LiveSessionState>();
+
+/**
+ * CR-01 fix: cleanup functions returned by `wireTerminalActivity`, keyed by
+ * session id — module-level, same rationale as `liveSessions` above (no
+ * immer-frozen shape). Activity classification is wired ONCE per live
+ * session, right here at `createSession` time, and ONLY stopped on
+ * `killSession`/`archiveSession` (true end-of-life). It must NEVER be tied
+ * to whether/which `TerminalView` happens to be mounted — a session that
+ * loses focus, or a collapsed drawer's `lastFocusedSessionId` fallback
+ * target, must keep being classified so the busy-injection guard
+ * (`resolveInjection`) never goes stale for `PhaseCardAction`/
+ * `GsdCommandToolbar`/`CommandPalette`.
+ */
+const activityStops = new Map<string, () => void>();
 
 export type SessionErrorKind = "AlreadyExists" | "NotFound" | "Spawn" | "Io" | "Unknown";
 
@@ -202,6 +217,22 @@ export const useSessionStore = create<SessionStoreState>()(
         state.error = null;
         state.sessions.push({ id: sessionId, lastModified: new Date(), origin: "live" });
       });
+
+      // CR-01: wire ACT-03 activity classification for the FULL lifetime of
+      // this live session, right here at creation — independent of whether
+      // any `TerminalView` ever mounts for it. `wireTerminalActivity`
+      // registers against `channel.ts`'s always-active `activityHandlers`
+      // map, so bytes are classified even while the session sits in the
+      // background or the drawer is collapsed.
+      if (!activityStops.has(sessionId)) {
+        activityStops.set(
+          sessionId,
+          wireTerminalActivity(sessionId, (activity) => {
+            get().setActivity(sessionId, activity);
+          }),
+        );
+      }
+
       return sessionId;
     },
 
@@ -214,6 +245,11 @@ export const useSessionStore = create<SessionStoreState>()(
 
     killSession: async (sessionId: string) => {
       await killSessionProcess(sessionId);
+      // CR-01: true end-of-life for the session — stop the activity wiring
+      // registered by `createSession` (never on a mere focus/session-switch,
+      // that's the whole point of decoupling it from `TerminalView`).
+      activityStops.get(sessionId)?.();
+      activityStops.delete(sessionId);
       set((state) => {
         if (state.activeSessionId === sessionId) {
           state.activeSessionId = null;
@@ -223,6 +259,9 @@ export const useSessionStore = create<SessionStoreState>()(
 
     archiveSession: async (sessionId: string) => {
       await killSessionProcess(sessionId);
+      // CR-01: same teardown discipline as killSession above.
+      activityStops.get(sessionId)?.();
+      activityStops.delete(sessionId);
       set((state) => {
         if (state.activeSessionId === sessionId) {
           state.activeSessionId = null;

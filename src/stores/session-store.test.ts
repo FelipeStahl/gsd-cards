@@ -4,6 +4,8 @@ const invokeMock = vi.fn();
 const readDirMock = vi.fn();
 const statMock = vi.fn();
 const killSessionProcessMock = vi.fn();
+const wireTerminalActivityMock = vi.fn();
+const activityStopMock = vi.fn();
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invokeMock(...args),
@@ -16,6 +18,17 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
 
 vi.mock("../pty/channel", () => ({
   killSession: (...args: unknown[]) => killSessionProcessMock(...args),
+}));
+
+// CR-01: `createSession` now wires ACT-03 activity classification directly
+// (independent of any `TerminalView` mount) via
+// `useTerminalActivity::wireTerminalActivity`. Mocked here so these
+// session-lifecycle tests stay isolated from the decoder/rolling-buffer
+// implementation (covered separately by `useTerminalActivity.test.ts`) —
+// what THIS suite must prove is the wiring/teardown CONTRACT: wired at
+// creation regardless of UI, stopped only at kill/archive.
+vi.mock("../components/terminal/useTerminalActivity", () => ({
+  wireTerminalActivity: (...args: unknown[]) => wireTerminalActivityMock(...args),
 }));
 
 const { useSessionStore, toSessionError } = await import("./session-store");
@@ -31,6 +44,9 @@ beforeEach(() => {
   readDirMock.mockReset();
   statMock.mockReset();
   killSessionProcessMock.mockReset();
+  wireTerminalActivityMock.mockReset();
+  activityStopMock.mockReset();
+  wireTerminalActivityMock.mockReturnValue(activityStopMock);
 });
 
 function openProjectAt(root: string) {
@@ -184,6 +200,70 @@ describe("archiveSession (SESS-06 — Arquivar/Excluir)", () => {
     expect(state.activeSessionId).toBe(activeId);
     expect(state.sessions.find((session) => session.id === otherId)).toBeUndefined();
     expect(state.sessions.find((session) => session.id === activeId)).toBeDefined();
+  });
+});
+
+describe("activity wiring lifecycle (CR-01 — always-on, independent of TerminalView)", () => {
+  it("createSession wires ACT-03 activity classification for the new live session id — no TerminalView involved at all", () => {
+    openProjectAt("/repo");
+
+    const id = useSessionStore.getState().createSession();
+
+    expect(wireTerminalActivityMock).toHaveBeenCalledWith(id, expect.any(Function));
+  });
+
+  it("invoking the wired onChange callback updates SessionDescriptor.activity for a session that never had a TerminalView mounted (a background/non-active session, or the collapsed drawer's lastFocusedSessionId fallback target)", () => {
+    openProjectAt("/repo");
+    const activeId = useSessionStore.getState().createSession() as string;
+    // A second session created (and thus never focused/active) — this is
+    // exactly the "background session" scenario CR-01 was about: its
+    // activity must still update even though it is never the
+    // activeSessionId and no TerminalView ever mounts for it in this test.
+    const backgroundId = useSessionStore.getState().createSession() as string;
+    expect(backgroundId).not.toBe(activeId);
+
+    const backgroundOnChange = wireTerminalActivityMock.mock.calls.find(
+      ([sessionId]) => sessionId === backgroundId,
+    )?.[1] as ((activity: string) => void) | undefined;
+    expect(backgroundOnChange).toBeDefined();
+
+    backgroundOnChange?.("busy");
+
+    const session = useSessionStore.getState().sessions.find((s) => s.id === backgroundId);
+    expect(session?.activity).toBe("busy");
+  });
+
+  it("killSession stops the activity wiring for that session (true end-of-life, not a focus change)", async () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+    killSessionProcessMock.mockResolvedValue(undefined);
+
+    await useSessionStore.getState().killSession(id);
+
+    expect(activityStopMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("archiveSession stops the activity wiring for that session", async () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+    killSessionProcessMock.mockResolvedValue(undefined);
+
+    await useSessionStore.getState().archiveSession(id);
+
+    expect(activityStopMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("focusSession (switching which session is active/displayed) never stops or re-wires activity — a collapsed drawer or session switch must not freeze the busy-guard", () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+    wireTerminalActivityMock.mockClear();
+    activityStopMock.mockClear();
+
+    useSessionStore.getState().focusSession("some-other-session");
+    useSessionStore.getState().focusSession(id);
+
+    expect(wireTerminalActivityMock).not.toHaveBeenCalled();
+    expect(activityStopMock).not.toHaveBeenCalled();
   });
 });
 
