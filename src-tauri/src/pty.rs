@@ -87,6 +87,30 @@ impl PtyManager {
             let _ = session.child.wait();
         }
     }
+
+    /// Escreve `data` no stdin do PTY da sessão `session_id` — a mesma
+    /// lógica lock→`get_mut`→`ok_or_else(NotFound)`→`write_all` que o
+    /// comando `write_session` abaixo delegava anteriormente. Extraído para
+    /// um método público (mesmo precedente de `kill_all`) para que
+    /// `tests/write_session_rejects.rs` — um crate externo, sem acesso a um
+    /// `tauri::State` real — possa exercitar o caminho de rejeição
+    /// (`PtyError::NotFound`) sobre um `PtyManager` de verdade, não um mock
+    /// JS (03-01-PLAN.md Task 3, T-03-02). Comportamento byte-a-byte
+    /// idêntico ao anterior — pura relocação, nenhuma escrita nova.
+    pub fn write(&self, session_id: &str, data: &str) -> Result<(), PtyError> {
+        let mut sessions = self
+            .0
+            .lock()
+            .map_err(|_| PtyError::Io("Estado do PtyManager corrompido (mutex poisoned)".to_string()))?;
+        let session = sessions
+            .get_mut(session_id)
+            .ok_or_else(|| PtyError::NotFound(session_id.to_string()))?;
+        session
+            .writer
+            .write_all(data.as_bytes())
+            .map_err(|e| PtyError::Io(e.to_string()))?;
+        Ok(())
+    }
 }
 
 /// Loop de leitura testável isoladamente: lê do `reader` até EOF (`Ok(0)`)
@@ -204,18 +228,7 @@ pub fn write_session(
     session_id: String,
     data: String,
 ) -> Result<(), PtyError> {
-    let mut sessions = state
-        .0
-        .lock()
-        .map_err(|_| PtyError::Io("Estado do PtyManager corrompido (mutex poisoned)".to_string()))?;
-    let session = sessions
-        .get_mut(&session_id)
-        .ok_or_else(|| PtyError::NotFound(session_id.clone()))?;
-    session
-        .writer
-        .write_all(data.as_bytes())
-        .map_err(|e| PtyError::Io(e.to_string()))?;
-    Ok(())
+    state.write(&session_id, &data)
 }
 
 #[tauri::command]

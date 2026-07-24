@@ -6,7 +6,12 @@ mod planning_watcher;
 // itens não-`pub` de um módulo não-`pub` são invisíveis fora do crate.
 pub mod process_guard;
 mod project;
-mod pty;
+// `pub` (não `mod` privado) pelo MESMO motivo de `process_guard` acima:
+// `tests/write_session_rejects.rs` — um crate externo — precisa exercitar
+// `PtyManager::write`/`PtyError` diretamente para provar a rejeição real do
+// backend (`PtyError::NotFound`, serde-serializável) sem depender de um
+// `tauri::State`/`Channel` reais (03-01-PLAN.md Task 3, T-03-02).
+pub mod pty;
 mod sessions;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
