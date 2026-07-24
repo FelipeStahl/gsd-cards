@@ -77,11 +77,16 @@ describe("derivePhaseAction — os 8 valores de DiskStatus (D-ACT01)", () => {
 });
 
 describe("sanitizePhaseId — allow/deny (T-03-01)", () => {
-  it.each(["03", "12", "02.1"])("aceita id válido %s", (id) => {
+  it.each(["3", "9", "03", "12", "02.1", "9.1"])("aceita id válido %s", (id) => {
     expect(sanitizePhaseId(id)).toBe(id);
   });
 
-  it.each(["3", "3; rm -rf ~", "03\rmalicious", "../etc", "03 && x", ""])(
+  // WR-02: um único dígito (`3`, `9`) é aceito — a mitigação de T-03-01 é
+  // sobre caracteres de injeção, nunca sobre exigir um mínimo de dígitos.
+  // `phase-scan.ts`'s próprio padrão de nome de diretório (`^(\d+(?:\.\d)?)-`)
+  // já aceita fases de um único dígito; outros repositórios GSD (não só o
+  // padrão `01-`/`02-` deste projeto) podem legitimamente usar `9-algo`.
+  it.each(["3; rm -rf ~", "03\rmalicious", "../etc", "03 && x", ""])(
     "rejeita id inválido %j",
     (id) => {
       expect(sanitizePhaseId(id)).toBeNull();

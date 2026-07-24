@@ -69,8 +69,19 @@ export function derivePhaseAction(status: DiskStatus): PhaseAction | null {
   }
 }
 
-/** Padrão âncorado — só dígitos, opcionalmente com um sufixo decimal (fase inserida, ex. `02.1`). */
-const PHASE_ID_PATTERN = /^\d{2,}(\.\d+)?$/;
+/**
+ * Padrão âncorado — só dígitos, opcionalmente com um sufixo decimal (fase
+ * inserida, ex. `02.1`). WR-02: aceita um único dígito (`9`, não só `09`) —
+ * a mitigação de T-03-01 é sobre bloquear caracteres de injeção, nunca
+ * sobre exigir um mínimo de dígitos. `phase-scan.ts`'s
+ * `PHASE_DIR_NAME_PATTERN` (`^(\d+(?:\.\d)?)-(.+)$`) já aceita nomes de
+ * diretório de fase de um único dígito — outros repositórios GSD (não só o
+ * padrão `01-`/`02-` deste projeto) podem legitimamente usar `9-algo`. Sem
+ * esta mudança, tal fase renderia normalmente em todo o resto do board mas
+ * silenciosamente perderia seu botão de ação, indistinguível do estado
+ * terminal `complete`.
+ */
+const PHASE_ID_PATTERN = /^\d+(\.\d+)?$/;
 
 /**
  * Valida `phase.id` antes de qualquer interpolação num comando injetado
