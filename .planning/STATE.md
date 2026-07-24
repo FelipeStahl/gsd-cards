@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: casa-persistente
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-07-24T05:08:48.844Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-07-24T05:24:51.759Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 26
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (casa-persistente) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-07-24 — Phase 04 execution started
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -78,6 +78,7 @@ Progress: [█████████░] 85%
 | Phase 04 P01 | 10min | 3 tasks | 14 files |
 | Phase 04 P02 | 10min | 2 tasks | 3 files |
 | Phase 04 P03 | 5min | 2 tasks | 7 files |
+| Phase 04 P04 | 15min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-02]: insert_dummy_session test helper spawns a real portable_pty session (openpty + spawn_command + TreeGuard::attach) to populate PtyManager for remove_exited/handle_session_exit tests, since PtySession's private fields are only constructible via a real spawn
 - [Phase ?]: [Phase 04-03]: switchProject does NOT call upsertRecent — not required by the plan's action spec, avoids scope creep on a 'costly' reversibility-rated change
 - [Phase ?]: [Phase 04-03]: recentlyUpdatedPhaseIds cleared inside switchProject's commit — prevents a stale glow window from mis-highlighting phase ids in the newly-active project's board
+- [Phase ?]: [Phase 04-04]: createProjectSession spawns the PTY directly (calls spawnSession itself) instead of createSession's lazy-spawn-on-TerminalView-mount pattern — no TerminalView mounts while view === 'home'
+- [Phase ?]: [Phase 04-04]: removeRecent() added to app-store.ts (Rule 2 deviation) — the plan's Task 2 action required the error card's 'Remover da lista' action to persist removal, but app-store.ts only exposed upsertRecent/getRecents
+- [Phase ?]: [Phase 04-04]: ProjectCard treats parseStateFile's overall 'unrecognized' result the same as a validateProjectRoot/read rejection — both degrade to the single non-clickable error card variant
 
 ### Pending Todos
 
@@ -171,6 +175,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T05:08:48.830Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-07-24T05:24:51.742Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
