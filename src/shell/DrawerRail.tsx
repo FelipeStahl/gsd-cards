@@ -11,6 +11,7 @@
 import { TerminalSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { GsdCommandToolbar } from "../components/terminal/GsdCommandToolbar";
 import { TerminalView } from "../components/terminal/TerminalView";
 import { useBoardStore } from "../stores/board-store";
 import { useSessionStore } from "../stores/session-store";
@@ -34,8 +35,17 @@ export function DrawerRail() {
           backgroundColor: "var(--color-secondary)",
           display: "flex",
           flexDirection: "column",
+          position: "relative",
         }}
       >
+        {/* ACT-04 (Fase 3, Plano 05): toolbar GSD acima do TerminalView —
+            só existe enquanto há sessão ativa (mesmo gate deste branch do
+            <aside>), o que também escopa o listener Cmd/Ctrl+K do
+            GsdCommandToolbar a "só enquanto o drawer está expandido"
+            (03-RESEARCH.md ## Security Domain). `position: relative` no
+            <aside> confina o CommandPalette (position: absolute) que o
+            toolbar abre — nunca escurece o board/sidebar. */}
+        <GsdCommandToolbar />
         <TerminalView sessionId={activeSessionId} projectRoot={projectRoot} />
       </aside>
     );

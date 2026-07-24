@@ -7,6 +7,12 @@ vi.mock("../components/terminal/TerminalView", () => ({
   ),
 }));
 
+const writeSessionMock = vi.fn();
+
+vi.mock("../pty/channel", () => ({
+  writeSession: (...args: unknown[]) => writeSessionMock(...args),
+}));
+
 const { DrawerRail } = await import("./DrawerRail");
 const { useBoardStore } = await import("../stores/board-store");
 const { useSessionStore } = await import("../stores/session-store");
@@ -23,6 +29,7 @@ function openProjectAt(root: string) {
 beforeEach(() => {
   useBoardStore.setState(initialBoardState, true);
   useSessionStore.setState(initialSessionState, true);
+  writeSessionMock.mockReset();
 });
 
 describe("DrawerRail — recolhido, nenhuma sessão jamais focada", () => {
@@ -83,5 +90,56 @@ describe("DrawerRail — expandido (sessão ativa)", () => {
     render(<DrawerRail />);
 
     expect(screen.getByTestId("terminal-view")).toHaveTextContent("s1");
+  });
+});
+
+describe("DrawerRail — GSD command toolbar (ACT-04)", () => {
+  it("não monta a toolbar no rail recolhido (sem sessão ativa)", () => {
+    render(<DrawerRail />);
+    expect(screen.queryByRole("button", { name: "Tarefa rápida" })).not.toBeInTheDocument();
+  });
+
+  it("monta a toolbar GSD no aside expandido (sessão ativa)", () => {
+    openProjectAt("/repo");
+    useSessionStore.setState({
+      activeSessionId: "s1",
+      lastFocusedSessionId: "s1",
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live" }],
+    });
+
+    render(<DrawerRail />);
+    expect(screen.getByRole("button", { name: "Tarefa rápida" })).toBeInTheDocument();
+  });
+
+  it("botão parametricless numa sessão ociosa chama writeSession(id, \"/gsd-quick\\r\") e fecha a sessão", () => {
+    openProjectAt("/repo");
+    useSessionStore.setState({
+      activeSessionId: "s1",
+      lastFocusedSessionId: "s1",
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "idle" }],
+    });
+    writeSessionMock.mockResolvedValue(undefined);
+
+    render(<DrawerRail />);
+    fireEvent.click(screen.getByRole("button", { name: "Tarefa rápida" }));
+
+    expect(writeSessionMock).toHaveBeenCalledTimes(1);
+    expect(writeSessionMock).toHaveBeenCalledWith("s1", "/gsd-quick\r");
+  });
+
+  it("sessão ocupada desabilita o botão e o clique não chama writeSession", () => {
+    openProjectAt("/repo");
+    useSessionStore.setState({
+      activeSessionId: "s1",
+      lastFocusedSessionId: "s1",
+      sessions: [{ id: "s1", lastModified: new Date(), origin: "live", activity: "busy" }],
+    });
+
+    render(<DrawerRail />);
+    const button = screen.getByRole("button", { name: "Tarefa rápida" });
+    expect(button).toBeDisabled();
+
+    fireEvent.click(button);
+    expect(writeSessionMock).not.toHaveBeenCalled();
   });
 });
