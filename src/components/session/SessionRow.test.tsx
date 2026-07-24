@@ -1,6 +1,9 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { formatDistanceToNow } from "date-fns";
+import { enUS, ptBR } from "date-fns/locale";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { i18n } from "../../i18n";
 import type { SessionDescriptor } from "../../stores/session-store";
 
 const archiveSessionMock = vi.fn();
@@ -277,5 +280,39 @@ describe("SessionRow — variante exited", () => {
     expect(
       screen.getByText(`Sessão ${session.id.slice(0, 8)} (encerrada)`),
     ).toBeInTheDocument();
+  });
+});
+
+describe("SessionRow — o timestamp relativo (date-fns) segue i18n.language (DIST-01, 05-01-PLAN.md)", () => {
+  const now = new Date("2026-07-24T12:00:00.000Z");
+  const lastModified = new Date("2026-07-22T12:00:00.000Z"); // 2 dias antes de `now`
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    // `i18n.changeLanguage` é um singleton GLOBAL — sem resetar (e AWAIT'ar)
+    // aqui, este teste vazaria "en" para os testes seguintes deste arquivo.
+    await i18n.changeLanguage("pt-BR");
+  });
+
+  it("após i18n.changeLanguage('en'), o timestamp relativo re-renderiza no locale en-US (era pt-BR antes da troca)", async () => {
+    const session = makeSession({ lastModified });
+    const { container } = render(<SessionRow session={session} variant="live" />);
+
+    const ptText = formatDistanceToNow(lastModified, { addSuffix: true, locale: ptBR });
+    expect(container.textContent).toContain(ptText);
+
+    await act(async () => {
+      await i18n.changeLanguage("en");
+    });
+
+    const enText = formatDistanceToNow(lastModified, { addSuffix: true, locale: enUS });
+    expect(enText).not.toBe(ptText);
+    expect(container.textContent).toContain(enText);
+    expect(container.textContent).not.toContain(ptText);
   });
 });
