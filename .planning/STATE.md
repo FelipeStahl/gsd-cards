@@ -6,9 +6,9 @@ current_phase: 05
 current_phase_name: comunidade
 status: verifying
 stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-07-24T08:43:39.555Z"
+last_updated: "2026-07-24T17:34:03.423Z"
 last_activity: 2026-07-24
-last_activity_desc: Phase 05 execution started
+last_activity_desc: "Completed quick task 260724-oed: default-run fix for cargo run binary selection"
 progress:
   total_phases: 5
   completed_phases: 5
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 Phase: 05 (comunidade) — EXECUTING
 Plan: 4 of 4
 Status: Phase complete — ready for verification
-Last activity: 2026-07-24 — Phase 05 execution started
+Last activity: 2026-07-24 — Completed quick task 260724-oed: default-run fix for cargo run binary selection
 
 Progress: [██████████] 100%
 
@@ -179,6 +179,12 @@ None yet.
 - [Phase 1/4]: Fragilidade do parser vs. evolução do formato gsd-core — mitigar com fixtures versionadas (definir na Fase 1, validar na Fase 4).
 - [Phase 2]: Zombie processes do PTY / ConPTY no Windows — tree-kill e handlers de saída como critério de fundação, testar em máquina Windows real.
 - [Phase 02-05]: Nenhum plano da Fase 2 (01-06) construiu o TerminalPane/chrome header (02-UI-SPEC.md) — o ícone Buscar 32x32 não existe; TerminalSearchBar abre só via Ctrl+F/Cmd+F. Registrado em WINDOWS.md.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260724-oed | Add default-run to src-tauri Cargo.toml to fix cargo run binary selection for tauri dev | 2026-07-24 | d255cfc | [260724-oed-add-default-run-to-src-tauri-cargo-toml-](./quick/260724-oed-add-default-run-to-src-tauri-cargo-toml-/) |
 
 ## Deferred Verification
 
