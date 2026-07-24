@@ -176,6 +176,19 @@ export async function getPersistedSessions(projectRoot: string): Promise<Persist
 export const SUPPORTED_LANGUAGES = ["pt-BR", "en"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
+/**
+ * IN-02 fix (05-REVIEW.md): type guard compartilhado para "esta string é um
+ * membro do enum fechado `SUPPORTED_LANGUAGES`" — antes desta função,
+ * `getLanguage()` (abaixo) e `LanguageSwitcher.tsx` (`active`) reimplementavam
+ * cada um seu próprio `(SUPPORTED_LANGUAGES as readonly string[]).includes(x)`
+ * seguido de um `as SupportedLanguage` manual. Mesma lógica, um só lugar —
+ * ambos os chamadores agora usam `isSupportedLanguage(x)` como narrowing sem
+ * precisar do cast.
+ */
+export function isSupportedLanguage(value: string): value is SupportedLanguage {
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(value);
+}
+
 const LANGUAGE_KEY = "language";
 
 /**
@@ -201,7 +214,8 @@ export async function setLanguage(lng: SupportedLanguage): Promise<void> {
  */
 export async function getLanguage(): Promise<SupportedLanguage | null> {
   const value = await appStore.get<string>(LANGUAGE_KEY);
-  return (SUPPORTED_LANGUAGES as readonly string[]).includes(value ?? "")
-    ? (value as SupportedLanguage)
-    : null;
+  if (value !== undefined && isSupportedLanguage(value)) {
+    return value;
+  }
+  return null;
 }

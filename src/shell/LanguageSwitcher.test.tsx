@@ -9,6 +9,7 @@ const setLanguageMock = vi.fn();
 vi.mock("../persistence/app-store", () => ({
   setLanguage: (...args: unknown[]) => setLanguageMock(...args),
   SUPPORTED_LANGUAGES: ["pt-BR", "en"],
+  isSupportedLanguage: (value: string) => ["pt-BR", "en"].includes(value),
 }));
 
 const { LanguageSwitcher } = await import("./LanguageSwitcher");

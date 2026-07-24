@@ -14,6 +14,7 @@ vi.mock("../../persistence/app-store", () => ({
   getRecents: (...args: unknown[]) => getRecentsMock(...args),
   setLanguage: (...args: unknown[]) => setLanguageMock(...args),
   SUPPORTED_LANGUAGES: ["pt-BR", "en"],
+  isSupportedLanguage: (value: string) => ["pt-BR", "en"].includes(value),
 }));
 
 // `ProjectCard`/`CreateProjectFlow` têm suas próprias suítes dedicadas

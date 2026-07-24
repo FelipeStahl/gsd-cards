@@ -34,6 +34,7 @@ vi.mock("../persistence/app-store", () => ({
   getLanguage: (...args: unknown[]) => getLanguageMock(...args),
   setLanguage: (...args: unknown[]) => setLanguageMock(...args),
   SUPPORTED_LANGUAGES: ["pt-BR", "en"],
+  isSupportedLanguage: (value: string) => ["pt-BR", "en"].includes(value),
 }));
 
 // DIST-03 (05-03-PLAN.md): o boot effect do AppShell chama `checkForUpdate()`

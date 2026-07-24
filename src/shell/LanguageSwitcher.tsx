@@ -15,7 +15,12 @@
 import { useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 
-import { setLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from "../persistence/app-store";
+import {
+  isSupportedLanguage,
+  setLanguage,
+  SUPPORTED_LANGUAGES,
+  type SupportedLanguage,
+} from "../persistence/app-store";
 
 const CONTAINER_STYLE: CSSProperties = {
   display: "inline-flex",
@@ -56,10 +61,8 @@ export function LanguageSwitcher() {
   // `i18n.language` pode ser um valor fora do enum durante transições raras
   // (ex.: detector externo) — cai para pt-BR (o default de `i18n.init`) em
   // vez de deixar nenhum segmento marcado como ativo.
-  const active: SupportedLanguage = (SUPPORTED_LANGUAGES as readonly string[]).includes(
-    i18n.language,
-  )
-    ? (i18n.language as SupportedLanguage)
+  const active: SupportedLanguage = isSupportedLanguage(i18n.language)
+    ? i18n.language
     : "pt-BR";
 
   function handleClick(next: SupportedLanguage) {
