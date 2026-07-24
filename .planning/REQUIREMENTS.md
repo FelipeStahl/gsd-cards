@@ -45,7 +45,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **ACT-01**: Cards de fase oferecem ações contextuais conforme o status (pending→Discutir, discussed→Planejar, planned→Executar, executed→Verificar...)
 - [x] **ACT-02**: Disparar uma ação envia o comando `/gsd-*` correto para o terminal da sessão escolhida/ativa
-- [ ] **ACT-03**: App detecta estado do terminal (ocioso/ocupado/aguardando permissão) e não injeta comandos com o Claude ocupado
+- [x] **ACT-03**: App detecta estado do terminal (ocioso/ocupado/aguardando permissão) e não injeta comandos com o Claude ocupado
 - [ ] **ACT-04**: Usuário tem atalhos GSD (paleta/botões) no drawer junto ao terminal
 
 ### Distribuição (DIST)
@@ -116,7 +116,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BOARD-06 | Phase 1 | Complete |
 | ACT-01 | Phase 3 | Complete |
 | ACT-02 | Phase 3 | Complete |
-| ACT-03 | Phase 3 | Pending |
+| ACT-03 | Phase 3 | Complete |
 | ACT-04 | Phase 3 | Pending |
 | DIST-01 | Phase 5 | Pending |
 | DIST-02 | Phase 5 | Pending |
