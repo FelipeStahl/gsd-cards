@@ -112,7 +112,7 @@ Plans:
   3. O app detecta o estado do terminal (ocioso/ocupado/aguardando permissão) e não injeta comandos enquanto o Claude está ocupado.
   4. Usuário aciona atalhos GSD (paleta/botões de comandos `/gsd-*`) no drawer junto ao terminal.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans executed
 Plans:
 **Wave 1**
 
@@ -129,7 +129,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 03-05-PLAN.md — Toolbar de comandos GSD + paleta Cmd/Ctrl+K no drawer, sob o mesmo guard (ACT-04)
+- [x] 03-05-PLAN.md — Toolbar de comandos GSD + paleta Cmd/Ctrl+K no drawer, sob o mesmo guard (ACT-04)
 
 **UI hint**: yes
 
@@ -174,6 +174,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Espelho fiel | 8/8 | In Progress|  |
 | 2. Sessão viva | 6/6 | In Progress|  |
-| 3. Board interativo | 4/5 | In Progress|  |
+| 3. Board interativo | 5/5 | In Progress|  |
 | 4. Casa persistente | 0/TBD | Not started | - |
 | 5. Comunidade | 0/TBD | Not started | - |
