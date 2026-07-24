@@ -15,6 +15,8 @@ import { HomeScreen } from "../components/home/HomeScreen";
 import { SessionSidebar } from "../components/session/SessionSidebar";
 import { getLanguage } from "../persistence/app-store";
 import { useBoardStore } from "../stores/board-store";
+import { checkForUpdate } from "../updates/check-update";
+import { useUpdateStore } from "../updates/update-store";
 import { Board } from "./Board";
 import { DrawerRail } from "./DrawerRail";
 import { Header } from "./Header";
@@ -56,6 +58,27 @@ export function AppShell() {
       cancelled = true;
     };
   }, [i18n]);
+
+  // DIST-03 boot check (05-UI-SPEC.md "## Update Affordance"): checa por
+  // atualização UMA vez no mount do AppShell, ACIMA de qualquer `return`
+  // condicional (mesma regra do efeito de idioma acima) para rodar
+  // independentemente de `view`. `checkForUpdate()` é module-cached e nunca
+  // lança (T-05-05) — o resultado alimenta a `update-store` compartilhada
+  // que os dois mounts de `UpdateIndicator` (Header + HomeScreen) leem.
+  useEffect(() => {
+    let cancelled = false;
+    void checkForUpdate().then((update) => {
+      if (cancelled) return;
+      if (update) {
+        useUpdateStore.getState().setAvailable(update);
+      } else {
+        useUpdateStore.getState().setUpToDate();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleOpenProject() {
     // Único caminho que entra no app: o escolhido pelo diálogo nativo — nunca

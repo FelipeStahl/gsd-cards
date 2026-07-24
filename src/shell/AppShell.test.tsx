@@ -6,6 +6,7 @@ import { i18n } from "../i18n";
 import { ok } from "../planning/parse-result";
 import { useBoardStore } from "../stores/board-store";
 import { useSessionStore } from "../stores/session-store";
+import { useUpdateStore } from "../updates/update-store";
 import { AppShell } from "./AppShell";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
@@ -33,6 +34,16 @@ vi.mock("../persistence/app-store", () => ({
   getLanguage: (...args: unknown[]) => getLanguageMock(...args),
   setLanguage: (...args: unknown[]) => setLanguageMock(...args),
   SUPPORTED_LANGUAGES: ["pt-BR", "en"],
+}));
+
+// DIST-03 (05-03-PLAN.md): o boot effect do AppShell chama `checkForUpdate()`
+// incondicionalmente, mesmo motivo do mock de `getLanguage` acima — sem
+// isso, o `check()` real do `@tauri-apps/plugin-updater` seria chamado (via
+// `invoke`) em TODOS os testes deste arquivo, não só os de update.
+const checkForUpdateMock = vi.fn();
+vi.mock("../updates/check-update", () => ({
+  checkForUpdate: (...args: unknown[]) => checkForUpdateMock(...args),
+  installUpdateAndRelaunch: vi.fn(),
 }));
 
 // `ProjectCard` (04-04-PLAN.md) tem sua própria suíte dedicada
@@ -71,6 +82,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
 
 const initialState = useBoardStore.getState();
 const initialSessionState = useSessionStore.getState();
+const initialUpdateState = useUpdateStore.getState();
 
 beforeEach(() => {
   useBoardStore.setState(initialState, true);
@@ -94,6 +106,8 @@ beforeEach(() => {
   // abaixo sobrescrevem este mock explicitamente por teste.
   getLanguageMock.mockReset().mockResolvedValue("pt-BR");
   setLanguageMock.mockReset().mockResolvedValue(undefined);
+  checkForUpdateMock.mockReset().mockResolvedValue(null);
+  useUpdateStore.setState(initialUpdateState, true);
   vi.mocked(open).mockReset().mockResolvedValue(null);
 });
 
@@ -310,5 +324,36 @@ describe("AppShell — restauração de idioma no boot (DIST-01, T-05-01)", () =
       expect(getLanguageMock).toHaveBeenCalled();
     });
     expect(changeLanguageSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("AppShell — checagem de atualização no boot (DIST-03, T-05-05)", () => {
+  it("chama checkForUpdate() UMA vez no mount, independentemente da view", () => {
+    render(<AppShell />);
+
+    expect(checkForUpdateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("quando checkForUpdate resolve um Update, popula a update-store com available + a versão", async () => {
+    const update = { version: "9.9.9" };
+    checkForUpdateMock.mockResolvedValue(update);
+
+    render(<AppShell />);
+
+    await waitFor(() => {
+      expect(useUpdateStore.getState().state).toBe("available");
+    });
+    expect(useUpdateStore.getState().version).toBe("9.9.9");
+    expect(useUpdateStore.getState().pendingUpdate).toBe(update);
+  });
+
+  it("quando checkForUpdate resolve null (sem atualização ou falha degradada), marca a update-store como up-to-date", async () => {
+    checkForUpdateMock.mockResolvedValue(null);
+
+    render(<AppShell />);
+
+    await waitFor(() => {
+      expect(useUpdateStore.getState().state).toBe("up-to-date");
+    });
   });
 });
