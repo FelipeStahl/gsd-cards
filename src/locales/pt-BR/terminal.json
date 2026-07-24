@@ -18,5 +18,9 @@
     "idle": "Ocioso",
     "busy": "Ocupado",
     "awaiting": "Aguardando permissão"
+  },
+  "toolbar": {
+    "openPalette": "Comandos",
+    "shortcutHint": "Ctrl+K"
   }
 }
