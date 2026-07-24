@@ -25,6 +25,14 @@ pub fn run() {
         // `opener:allow-open-url` apenas, nunca `allow-open-path`/
         // `allow-reveal-item-in-dir` (T-02-08).
         .plugin(tauri_plugin_opener::init())
+        // Primeira escrita em disco do app (04-01-PLAN.md) — SEMPRE
+        // appDataDir via este plugin, NUNCA o `.planning/` do usuário
+        // (invariante de produto, 04-CONTEXT.md `## Phase Boundary`).
+        .plugin(tauri_plugin_store::Builder::new().build())
+        // Notificações do SO (TERM-04, plano futuro desta fase) — registrado
+        // já neste plano-tracer junto com o store para não reabrir o gate de
+        // legitimidade de pacote duas vezes.
+        .plugin(tauri_plugin_notification::init())
         .manage(planning_watcher::WatcherState::default())
         .manage(pty::PtyManager::default())
         .invoke_handler(tauri::generate_handler![
