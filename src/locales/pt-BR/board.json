@@ -34,5 +34,21 @@
     "executed": "executada",
     "verified": "verificada",
     "unknown": "não reconhecida"
+  },
+  "actions": {
+    "discuss": "Discutir",
+    "plan": "Planejar",
+    "execute": "Executar",
+    "continue": "Continuar",
+    "verify": "Verificar",
+    "guard": {
+      "busy": "Claude está ocupado — aguarde",
+      "noSession": "Crie ou selecione uma sessão para usar ações GSD",
+      "prefilled": "Comando preenchido — pressione Enter no terminal para confirmar"
+    },
+    "sendTo": "Enviar para: {{session}}",
+    "error": {
+      "injectFailed": "Não foi possível enviar o comando"
+    }
   }
 }
