@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 02
-current_phase_name: sess-o-viva
-status: verifying
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-07-23T20:49:19.317Z"
-last_activity: 2026-07-23
-last_activity_desc: Phase 02 execution resumed (wave continue)
+current_phase: 03
+current_phase_name: board-interativo
+status: executing
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-07-24T02:35:59.752Z"
+last_activity: 2026-07-24
+last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 19
+  completed_plans: 15
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Abrir o app e ver fielmente, em tempo real, onde cada projeto GSD está — o board é um espelho confiável do `.planning/`.
-**Current focus:** Phase 02 — sess-o-viva
+**Current focus:** Phase 03 — board-interativo
 
 ## Current Position
 
-Phase: 02 (sess-o-viva) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-07-23 — Phase 02 execution resumed (wave continue)
+Phase: 03 (board-interativo) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-07-24 — Phase 03 execution started
 
-Progress: [██████████] 100%
+Progress: [████████░░] 79%
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: [██████████] 100%
 | Phase 02 P04 | 16min | 2 tasks | 20 files |
 | Phase 02 P05 | 20min | 2 tasks | 11 files |
 | Phase 02 P06 | 25min | 2 tasks | 16 files |
+| Phase 03 P01 | 21min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 02-06]: liveSessions implementado como Map de módulo fora do shape zustand/immer — o autoFreeze do immer congela recursivamente todo o estado a cada set(), inclusive campos não tocados, o que quebraria a mutação direta de um Map alcançável pelo estado
 - [Phase ?]: [Phase 02-06]: spawnSession só é chamado uma vez por sessão (hasLiveSession); troca de foco depois disso só redireciona setSessionBytesHandler — resolve o double-invoke do StrictMode sem matar/recriar a sessão
 - [Phase ?]: [Phase 02-06]: Archive/Delete restritos a rows não-históricas — sessão histórica não tem PtySession viva a matar
+- [Phase ?]: [Phase 03-01]: phase.id inválido (T-03-01) não renderiza botão algum — mesmo tratamento de complete, não um botão desabilitado
+- [Phase ?]: [Phase 03-01]: PtyManager::write extraído como método público (precedente kill_all) para o teste de integração externo write_session_rejects.rs provar o PtyError::NotFound real
 
 ### Pending Todos
 
@@ -144,6 +147,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-23T20:49:19.289Z
-Stopped at: Phase 3 UI-SPEC approved
-Resume file: .planning/phases/03-board-interativo/03-UI-SPEC.md
+Last session: 2026-07-24T02:35:59.732Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None
