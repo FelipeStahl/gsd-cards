@@ -193,7 +193,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 05-02-PLAN.md — DIST-03 backend: gate de legitimidade + install dos plugins updater/process + registro em lib.rs + capabilities granulares (nunca catch-all)
+- [x] 05-02-PLAN.md — DIST-03 backend: gate de legitimidade + install dos plugins updater/process + registro em lib.rs + capabilities granulares (nunca catch-all)
 
 **Wave 3** *(blocked on Wave 2)*
 

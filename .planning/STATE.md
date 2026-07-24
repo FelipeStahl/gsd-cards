@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 05
 current_phase_name: comunidade
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-07-24T08:24:20.668Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-07-24T08:30:31.653Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 30
-  completed_plans: 27
+  completed_plans: 28
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 05 (comunidade) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-24 — Phase 05 execution started
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -83,6 +83,7 @@ Progress: [█████████░] 90%
 | Phase 04 P06 | 32min | 3 tasks | 16 files |
 | Phase 04 P07 | 20min | 2 tasks | 10 files |
 | Phase 05-comunidade P01 | 24min | 3 tasks | 15 files |
+| Phase 05-comunidade P02 | 6min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -155,6 +156,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-07]: markExited never demotes origin — a live session that exits keeps origin:"live" with exited:true (02-UI-SPEC.md: exited-this-run sessions stay in Ativas, never migrate to Histórico)
 - [Phase ?]: DIST-01: getLanguage() enum-validates the persisted language value (pt-BR|en) before returning — an unrecognized value resolves to null, never reaching i18n.changeLanguage raw (T-05-01)
 - [Phase ?]: DIST-01: LanguageSwitcher's full-name aria-label/title are i18n keys, so they read in the CURRENT UI language (not a fixed autonym) — literal reading of the UI-SPEC copywriting contract
+- [Phase ?]: [Phase 05-02]: Granted updater:allow-check + updater:allow-download-and-install + process:allow-restart (not updater:default) per RESEARCH.md Pitfall 2 — preserves capabilities/default.json's own no-catch-all rule
+- [Phase ?]: [Phase 05-02]: Package legitimacy checkpoint for plugin-updater/plugin-process resolved via orchestrator pre-authorization — same tauri-apps org/repo already trusted for five plugins across Phases 1-4, SUS verdict was a sandbox telemetry gap
 
 ### Pending Todos
 
@@ -190,6 +193,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T08:24:20.649Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-07-24T08:30:31.636Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
