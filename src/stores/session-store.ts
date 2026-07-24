@@ -181,8 +181,16 @@ interface SessionStoreState {
    * `openProject`/escreve `.planning/` — quem observa o `.planning/`
    * aparecer e chama `openProject(rawFolder)` é o caller
    * (`CreateProjectFlow`). Retorna o id da sessão criada.
+   *
+   * CR-02 fix (04-REVIEW.md): aceita um `onBytes` opcional encaminhado
+   * verbatim a `spawnSession` — antes desta correção os bytes eram sempre
+   * descartados (`onBytes: () => {}`), deixando o usuário sem nenhuma forma
+   * de ver ou responder aos prompts interativos de `/gsd-new-project`.
+   * `CreateProjectFlow` passa um handler que alimenta um mini-terminal
+   * visível no próprio painel de progresso. Omitir o parâmetro preserva o
+   * comportamento anterior (bytes descartados) para qualquer outro caller.
    */
-  createProjectSession: (rawFolder: string) => Promise<string>;
+  createProjectSession: (rawFolder: string, onBytes?: (data: Uint8Array) => void) => Promise<string>;
   /** Marca uma sessão EXISTENTE (linha viva da sidebar) como ativa/focada — não cria nada novo. */
   focusSession: (sessionId: string) => void;
   /** Mata a árvore de processos da sessão e limpa `activeSessionId` se for a sessão ativa. Não remove a sessão de `sessions[]` — ver `archiveSession` para a ação de ciclo de vida (SESS-06). */
@@ -394,7 +402,7 @@ export const useSessionStore = create<SessionStoreState>()(
       return sessionId;
     },
 
-    createProjectSession: async (rawFolder: string) => {
+    createProjectSession: async (rawFolder: string, onBytes?: (data: Uint8Array) => void) => {
       const sessionId = crypto.randomUUID();
 
       try {
@@ -433,7 +441,11 @@ export const useSessionStore = create<SessionStoreState>()(
       // ponto deste caminho paralelo (T-04-10: a pasta vem só do diálogo
       // OS-nativo, nunca digitada/construída, e chega aqui como argumento
       // de spawn, nunca concatenada numa string de shell).
-      await spawnSession(sessionId, rawFolder, () => {});
+      //
+      // CR-02: `onBytes` (default no-op, preserva o comportamento anterior
+      // para callers que não passam nada) — nunca mais um destino fixo
+      // `() => {}` que descarta toda a conversa de `/gsd-new-project`.
+      await spawnSession(sessionId, rawFolder, onBytes ?? (() => {}));
       await writeSession(sessionId, "/gsd-new-project\r");
 
       return sessionId;

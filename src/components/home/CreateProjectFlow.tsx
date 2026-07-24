@@ -15,13 +15,14 @@
 // feita neste fluxo é a sessão em si (`createProjectSession`), que também
 // não toca `.planning/` (T-04-11).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { exists, readDir } from "@tauri-apps/plugin-fs";
 import { useTranslation } from "react-i18next";
 
 import { planningDir } from "../../planning/paths";
+import { writeSession } from "../../pty/channel";
 import { useBoardStore } from "../../stores/board-store";
 import { useSessionStore } from "../../stores/session-store";
 
@@ -29,6 +30,13 @@ import { useSessionStore } from "../../stores/session-store";
  * martelar o filesystem enquanto `/gsd-new-project` conduz sua própria
  * conversa (tipicamente alguns segundos até o primeiro artefato surgir). */
 const POLL_INTERVAL_MS = 1000;
+
+/** Teto defensivo do buffer de output acumulado do mini-terminal (CR-02) —
+ * uma sessão que produz muito texto (ex.: `/gsd-new-project` narrando saída
+ * verbosa) nunca deve crescer esta string sem limite pela vida do diálogo;
+ * mantém só a cauda mais recente, que é o que importa para responder a um
+ * prompt em andamento. */
+const MAX_TERMINAL_OUTPUT_CHARS = 20_000;
 
 type FlowPhase = "notEmpty" | "progress";
 
@@ -50,6 +58,46 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
   const { t } = useTranslation("home");
   const [phase, setPhase] = useState<FlowPhase | null>(null);
   const cancelledRef = useRef(false);
+
+  // CR-02 (04-REVIEW.md): mini-terminal embutido no próprio painel —
+  // `createProjectSession` antes descartava todo byte produzido por
+  // `/gsd-new-project` (`onBytes: () => {}`), deixando o usuário sem
+  // qualquer forma de ver ou responder aos prompts interativos do comando.
+  // Nenhum `TerminalView`/xterm.js real é montado aqui de propósito (a Home
+  // substitui o shell inteiro enquanto `view === "home"` — reusar o xterm
+  // real exigiria desfazer esse modelo); um `<pre>` decodificado + input
+  // wired a `writeSession` é o mínimo suficiente descrito pela própria
+  // sugestão de correção da revisão.
+  const sessionIdRef = useRef<string | null>(null);
+  const decoderRef = useRef(new TextDecoder());
+  const outputContainerRef = useRef<HTMLPreElement | null>(null);
+  const [terminalOutput, setTerminalOutput] = useState("");
+  const [terminalInput, setTerminalInput] = useState("");
+
+  useEffect(() => {
+    // Auto-scroll para o fim a cada byte novo — mesma disciplina de
+    // "sempre mostrar a saída mais recente" de um terminal real.
+    const container = outputContainerRef.current;
+    if (container) container.scrollTop = container.scrollHeight;
+  }, [terminalOutput]);
+
+  function handleSessionBytes(data: Uint8Array) {
+    const text = decoderRef.current.decode(data, { stream: true });
+    setTerminalOutput((previous) => {
+      const next = previous + text;
+      return next.length > MAX_TERMINAL_OUTPUT_CHARS
+        ? next.slice(next.length - MAX_TERMINAL_OUTPUT_CHARS)
+        : next;
+    });
+  }
+
+  function handleSubmitTerminalInput(event: FormEvent) {
+    event.preventDefault();
+    const sessionId = sessionIdRef.current;
+    if (!sessionId) return;
+    void writeSession(sessionId, `${terminalInput}\r`);
+    setTerminalInput("");
+  }
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -85,7 +133,10 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
       }
 
       setPhase("progress");
-      await useSessionStore.getState().createProjectSession(selected);
+      const sessionId = await useSessionStore
+        .getState()
+        .createProjectSession(selected, handleSessionBytes);
+      sessionIdRef.current = sessionId;
       if (cancelledRef.current) return;
 
       await waitForPlanningDir(selected, () => cancelledRef.current);
@@ -137,7 +188,10 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
         }
         style={{
           pointerEvents: "auto",
-          width: "min(420px, 90vw)",
+          // CR-02: em progresso, o painel cresce para caber o mini-terminal
+          // (output + input) — as outras fases (notEmpty/erro) permanecem
+          // no tamanho compacto original.
+          width: phase === "progress" ? "min(520px, 90vw)" : "min(420px, 90vw)",
           backgroundColor: "var(--color-dominant)",
           borderRadius: 8,
           padding: "var(--spacing-lg)",
@@ -181,6 +235,52 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
             >
               {t("create.progress.body")}
             </p>
+            {/* CR-02: mini-terminal — nunca discarda os bytes de
+               /gsd-new-project; o usuário vê a saída em tempo real e pode
+               responder qualquer prompt interativo pelo campo abaixo. */}
+            <pre
+              ref={outputContainerRef}
+              data-testid="create-project-terminal-output"
+              aria-label={t("create.progress.terminalLabel")}
+              style={{
+                margin: 0,
+                maxHeight: 180,
+                overflowY: "auto",
+                backgroundColor: "var(--color-secondary)",
+                color: "var(--color-foreground)",
+                borderRadius: 4,
+                padding: "var(--spacing-sm)",
+                fontFamily: '"JetBrains Mono Variable", ui-monospace, monospace',
+                fontSize: 12,
+                lineHeight: 1.4,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {terminalOutput || t("create.progress.terminalPlaceholder")}
+            </pre>
+            <form
+              onSubmit={handleSubmitTerminalInput}
+              style={{ display: "flex", gap: "var(--spacing-sm)" }}
+            >
+              <input
+                type="text"
+                value={terminalInput}
+                onChange={(event) => setTerminalInput(event.target.value)}
+                placeholder={t("create.progress.inputPlaceholder")}
+                aria-label={t("create.progress.inputPlaceholder")}
+                style={{
+                  flex: 1,
+                  fontFamily: '"JetBrains Mono Variable", ui-monospace, monospace',
+                  fontSize: "var(--font-size-body)",
+                  padding: "var(--spacing-xs) var(--spacing-sm)",
+                  borderRadius: 4,
+                  border: "1px solid var(--color-secondary)",
+                  backgroundColor: "var(--color-dominant)",
+                  color: "var(--color-foreground)",
+                }}
+              />
+            </form>
           </>
         ) : (
           <>

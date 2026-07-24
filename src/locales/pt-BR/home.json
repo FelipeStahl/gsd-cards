@@ -24,7 +24,10 @@
     "pickerPrompt": "Escolha uma pasta vazia para o novo projeto",
     "progress": {
       "heading": "Criando projeto…",
-      "body": "Conduzindo /gsd-new-project na sessão. Acompanhe o terminal."
+      "body": "Conduzindo /gsd-new-project na sessão. Acompanhe o terminal.",
+      "terminalLabel": "Saída da sessão /gsd-new-project",
+      "terminalPlaceholder": "Aguardando saída da sessão…",
+      "inputPlaceholder": "Digite e pressione Enter para responder"
     },
     "error": {
       "notEmpty": {

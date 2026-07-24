@@ -241,6 +241,23 @@ describe("createProjectSession", () => {
 
     expect(wireTerminalActivityMock).toHaveBeenCalledWith(id, expect.any(Function));
   });
+
+  it("CR-02: encaminha o onBytes recebido verbatim para spawnSession, em vez de sempre descartar bytes", async () => {
+    invokeMock.mockResolvedValueOnce("/home/user/.claude/projects/-nova-pasta");
+    const onBytes = vi.fn();
+
+    const id = await useSessionStore.getState().createProjectSession("/nova-pasta", onBytes);
+
+    expect(spawnSessionMock).toHaveBeenCalledWith(id, "/nova-pasta", onBytes);
+  });
+
+  it("CR-02: sem onBytes explícito, ainda spawna com um handler (comportamento anterior preservado para outros callers)", async () => {
+    invokeMock.mockResolvedValueOnce("/home/user/.claude/projects/-nova-pasta");
+
+    const id = await useSessionStore.getState().createProjectSession("/nova-pasta");
+
+    expect(spawnSessionMock).toHaveBeenCalledWith(id, "/nova-pasta", expect.any(Function));
+  });
 });
 
 describe("focusSession", () => {

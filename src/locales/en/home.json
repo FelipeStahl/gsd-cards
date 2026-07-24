@@ -24,7 +24,10 @@
     "pickerPrompt": "Choose an empty folder for the new project",
     "progress": {
       "heading": "Creating project…",
-      "body": "Running /gsd-new-project in the session. Watch the terminal."
+      "body": "Running /gsd-new-project in the session. Watch the terminal.",
+      "terminalLabel": "/gsd-new-project session output",
+      "terminalPlaceholder": "Waiting for session output…",
+      "inputPlaceholder": "Type and press Enter to reply"
     },
     "error": {
       "notEmpty": {
