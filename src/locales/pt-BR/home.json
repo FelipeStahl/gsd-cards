@@ -1,3 +1,37 @@
 {
-  "heading": "Projetos recentes"
+  "heading": "Projetos recentes",
+  "actions": {
+    "newProject": "Novo projeto GSD",
+    "openFolder": "Abrir pasta"
+  },
+  "empty": {
+    "heading": "Nenhum projeto ainda",
+    "body": "Abra uma pasta com um projeto GSD existente ou crie um novo projeto do zero."
+  },
+  "card": {
+    "loading": "Carregando saúde…",
+    "blockers_one": "1 bloqueio pendente",
+    "blockers_other": "{{count}} bloqueios pendentes",
+    "progress": "{{percent}}% concluído",
+    "error": {
+      "heading": "Projeto não encontrado",
+      "body": "A pasta {{path}} não existe mais ou foi movida.",
+      "remove": "Remover da lista",
+      "retry": "Tentar novamente"
+    }
+  },
+  "create": {
+    "pickerPrompt": "Escolha uma pasta vazia para o novo projeto",
+    "progress": {
+      "heading": "Criando projeto…",
+      "body": "Conduzindo /gsd-new-project na sessão. Acompanhe o terminal."
+    },
+    "error": {
+      "notEmpty": {
+        "heading": "Pasta não está vazia",
+        "body": "Escolha uma pasta vazia ou nova para criar um projeto GSD do zero.",
+        "dismiss": "OK"
+      }
+    }
+  }
 }

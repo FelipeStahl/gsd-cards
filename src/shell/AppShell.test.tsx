@@ -19,6 +19,27 @@ const upsertRecentMock = vi.fn();
 vi.mock("../persistence/app-store", () => ({
   getRecents: (...args: unknown[]) => getRecentsMock(...args),
   upsertRecent: (...args: unknown[]) => upsertRecentMock(...args),
+  removeRecent: vi.fn(),
+}));
+
+// `ProjectCard` (04-04-PLAN.md) tem sua própria suíte dedicada
+// (`components/home/ProjectCard.test.tsx`) cobrindo o pipeline de saúde
+// lazy (validate/read/parse) e os três variants — mockado aqui como um
+// botão mínimo para que ESTE teste (AppShell) prove só o que é sua própria
+// responsabilidade: a home substitui o shell inteiro e o clique num
+// recente chama `openProject` + volta a view para "board".
+vi.mock("../components/home/ProjectCard", () => ({
+  ProjectCard: ({
+    entry,
+    onOpen,
+  }: {
+    entry: { root: string; name: string };
+    onOpen: (root: string) => void;
+  }) => (
+    <button type="button" onClick={() => onOpen(entry.root)}>
+      {entry.name}
+    </button>
+  ),
 }));
 
 // SessionSidebar (SESS-01/PROJ-04) invoca `check_claude_on_path` (boot) e

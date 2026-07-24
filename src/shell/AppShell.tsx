@@ -3,8 +3,6 @@
 // falhou), a área central mostra EmptyState/ErrorState ocupando o espaço
 // inteiro — nunca um board com zero cards (PROJ-02).
 
-import { useEffect, useState } from "react";
-
 import { open } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 
@@ -12,67 +10,12 @@ import { ArtifactModal } from "../components/ArtifactModal";
 import { DetailPanel } from "../components/DetailPanel";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
+import { HomeScreen } from "../components/home/HomeScreen";
 import { SessionSidebar } from "../components/session/SessionSidebar";
-import { getRecents, type RecentProjectEntry } from "../persistence/app-store";
 import { useBoardStore } from "../stores/board-store";
 import { Board } from "./Board";
 import { DrawerRail } from "./DrawerRail";
 import { Header } from "./Header";
-
-/**
- * Ramo mínimo da home (04-01-PLAN.md, tracer da Fase 4): lê `getRecents()`
- * uma vez ao montar e renderiza cada recente como botão clicável. O grid de
- * `ProjectCard`/saúde por projeto/estado de carregamento chega no Plano
- * 04-04 — esta função é deliberadamente um esqueleto funcional, não o
- * layout final do UI-SPEC, provando só o loop persistência→leitura→render.
- */
-function HomeRecents({ onOpenRecent }: { onOpenRecent: (root: string) => void }) {
-  const { t } = useTranslation("home");
-  const [recents, setRecents] = useState<RecentProjectEntry[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void getRecents().then((loaded) => {
-      if (!cancelled) setRecents(loaded);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--spacing-md)",
-        padding: "var(--spacing-xl)",
-      }}
-    >
-      <h2 style={{ fontSize: "var(--font-size-heading)", fontWeight: "var(--font-weight-heading)" }}>
-        {t("heading")}
-      </h2>
-      {recents.map((recent) => (
-        <button
-          key={recent.root}
-          type="button"
-          onClick={() => onOpenRecent(recent.root)}
-          style={{
-            textAlign: "left",
-            backgroundColor: "var(--color-secondary)",
-            color: "var(--color-foreground)",
-            border: "none",
-            borderRadius: 8,
-            padding: "var(--spacing-md)",
-            cursor: "pointer",
-          }}
-        >
-          {recent.name}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export function AppShell() {
   const { t } = useTranslation("project");
@@ -100,7 +43,7 @@ export function AppShell() {
     // Home substitui o shell inteiro (Header/SessionSidebar/DrawerRail não
     // montam) — Pattern 1 de 04-RESEARCH.md, curto-circuita ANTES do
     // ternário `status` abaixo.
-    return <HomeRecents onOpenRecent={handleOpenRecent} />;
+    return <HomeScreen onOpenFolder={handleOpenProject} onOpenRecent={handleOpenRecent} />;
   }
 
   return (
