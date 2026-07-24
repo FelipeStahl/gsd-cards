@@ -13,7 +13,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **PROJ-02**: Usuário abre um diretório como projeto; o app valida a presença de `.planning/` antes de aceitá-lo como projeto GSD
 - [ ] **PROJ-03**: Usuário cria um projeto GSD do zero apontando uma pasta vazia/nova; o app abre uma sessão e conduz o `/gsd-new-project`
 - [x] **PROJ-04**: App detecta Claude CLI e gsd-core instalados; quando ausentes, mostra instrução clara de instalação (sem auto-instalar)
-- [ ] **PROJ-05**: Usuário alterna entre múltiplos projetos abertos sem fechar sessões de nenhum deles
+- [x] **PROJ-05**: Usuário alterna entre múltiplos projetos abertos sem fechar sessões de nenhum deles
 - [ ] **PROJ-06**: Usuário vê saúde de cada projeto na lista (fase atual, % de progresso, bloqueios pendentes) derivada de STATE.md
 
 ### Sessões (SESS)
@@ -96,7 +96,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROJ-02 | Phase 1 | Complete |
 | PROJ-03 | Phase 4 | Pending |
 | PROJ-04 | Phase 2 | Complete |
-| PROJ-05 | Phase 4 | Pending |
+| PROJ-05 | Phase 4 | Complete |
 | PROJ-06 | Phase 4 | Pending |
 | SESS-01 | Phase 2 | Complete |
 | SESS-02 | Phase 2 | Pending |

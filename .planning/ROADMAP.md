@@ -147,7 +147,7 @@ Plans:
   4. Ao reabrir o app, as sessões são restauradas (snapshot do buffer + histórico via `claude --resume`, restauração lazy), comunicando visualmente que é histórico restaurado, não processo contínuo.
   5. Usuário renomeia sessões e é notificado (alerta do SO + badge na sidebar) quando uma sessão termina ou precisa de input.
 
-**Plans**: 2/7 plans executed
+**Plans**: 3/7 plans executed
 Plans:
 **Wave 1**
 
@@ -156,7 +156,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 04-03-PLAN.md — Multi-projeto: `switchProject` (watcher único re-sincronizado) + botão Home no Header (PROJ-05)
+- [x] 04-03-PLAN.md — Multi-projeto: `switchProject` (watcher único re-sincronizado) + botão Home no Header (PROJ-05)
 - [ ] 04-04-PLAN.md — Home: grid de recentes + saúde por card + criar projeto do zero (PROJ-01/PROJ-06/PROJ-03)
 
 **Wave 3** *(blocked on Wave 2)*
@@ -198,5 +198,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Espelho fiel | 8/8 | In Progress|  |
 | 2. Sessão viva | 6/6 | In Progress|  |
 | 3. Board interativo | 5/5 | In Progress|  |
-| 4. Casa persistente | 2/7 | In Progress|  |
+| 4. Casa persistente | 3/7 | In Progress|  |
 | 5. Comunidade | 0/TBD | Not started | - |
