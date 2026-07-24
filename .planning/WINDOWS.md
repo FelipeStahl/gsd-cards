@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 5
+open_count: 6
 waived_count: 0
 fixed_count: 0
-total_count: 5
-last_updated: 2026-07-24T02:56:51.526Z
+total_count: 6
+last_updated: 2026-07-24T06:26:03.468Z
 ---
 
 # Broken Windows Ledger
@@ -20,6 +20,7 @@ last_updated: 2026-07-24T02:56:51.526Z
 | 3 | 02 | deviation | src/components/session/SessionRow.tsx |  | Archive row removal renders instantly (no 150ms fade+collapse per 02-UI-SPEC) — the transient animation needs a pending-removal state in SessionSidebar.tsx, which is out of this plan's declared file scope | open |  | 2026-07-23T18:24:13.726Z |  |
 | 4 | 02 | deviation | src/components/terminal/TerminalView.tsx |  | In React StrictMode dev-only double-invoke, the second (surviving) terminal instance's initial resize_session may not be retried after spawn_session resolves (only the first mount's promise chain retries) — cosmetic, dev-only; production builds mount once and are unaffected | open |  | 2026-07-23T18:24:13.863Z |  |
 | 5 | 03 | unrun-verify | src/planning/injection.ts |  | D6 backstop: busy-blocks/awaiting-prefills-without-stealing-Enter/idle-sends against a real live claude session not exercised in jsdom — deferred to /gsd-verify-work 3 (Plan 04) | open |  | 2026-07-24T02:56:51.526Z |  |
+| 6 | 04 | unrun-verify | .planning/phases/04-casa-persistente/04-07-PLAN.md |  | TERM-04 manual verification (04-VALIDATION Manual-Only, installed build): trigger an awaiting state and a session exit against a real Tauri runtime to confirm the OS notification appears and the rail badge reflects awaiting>exited>count; badge works even when notifications are denied. Automated coverage (mocked plugin) is green; this is the real-OS half. | open |  | 2026-07-24T06:26:03.468Z |  |
 
 ````json
 [
@@ -81,6 +82,18 @@ last_updated: 2026-07-24T02:56:51.526Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-07-24T02:56:51.526Z",
+    "resolved_at": null
+  },
+  {
+    "id": 6,
+    "kind": "unrun-verify",
+    "phase": "04",
+    "file": ".planning/phases/04-casa-persistente/04-07-PLAN.md",
+    "line": null,
+    "description": "TERM-04 manual verification (04-VALIDATION Manual-Only, installed build): trigger an awaiting state and a session exit against a real Tauri runtime to confirm the OS notification appears and the rail badge reflects awaiting>exited>count; badge works even when notifications are denied. Automated coverage (mocked plugin) is green; this is the real-OS half.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-07-24T06:26:03.468Z",
     "resolved_at": null
   }
 ]

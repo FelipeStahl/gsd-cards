@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 04
 current_phase_name: casa-persistente
-status: executing
-stopped_at: Completed 04-06-PLAN.md
-last_updated: "2026-07-24T06:06:21.238Z"
+status: verifying
+stopped_at: Completed 04-07-PLAN.md
+last_updated: "2026-07-24T06:28:02.601Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 26
-  completed_plans: 25
+  completed_plans: 26
 ---
 
 # Project State
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 
 Phase: 04 (casa-persistente) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-24 — Phase 04 execution started
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -81,6 +81,7 @@ Progress: [██████████] 96%
 | Phase 04 P04 | 15min | 3 tasks | 13 files |
 | Phase 04 P05 | 16min | 2 tasks | 17 files |
 | Phase 04 P06 | 32min | 3 tasks | 16 files |
+| Phase 04 P07 | 20min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-06]: resumeSession validates isValidSessionId FIRST, before descriptor lookup — defense-in-depth flag-injection guard independent of lookup order
 - [Phase ?]: [Phase 04-06]: origin flip historical/restored->live happens AFTER spawnSession resolves so the row renders variant="starting" (pulse) while the resume is in flight
 - [Phase ?]: [Phase 04-06]: app-store.ts (upsertPersistedSession/getPersistedSessions) and SessionSidebar.tsx wiring added outside the plan's files_modified list (Rule 2) — required for loadPersistedSessions/resumeSession to be reachable end-to-end
+- [Phase ?]: [Phase 04-07]: wireSessionExitListener is an explicit, lazily-invoked store action (called from SessionSidebar's project-open effect) instead of a module-top-level side effect — the eager version broke 5 unrelated test files via synchronous mock-export errors and unhandled promise rejections against the real @tauri-apps/api/event
+- [Phase ?]: [Phase 04-07]: DrawerRail's badge computation now filters sessions[] by activeProjectRoot before deriving liveCount/hasAwaiting/hasExited, fixing a pre-existing scope gap where the badge counted live sessions across all open projects, not just the active one
+- [Phase ?]: [Phase 04-07]: markExited never demotes origin — a live session that exits keeps origin:"live" with exited:true (02-UI-SPEC.md: exited-this-run sessions stay in Ativas, never migrate to Histórico)
 
 ### Pending Todos
 
@@ -182,6 +186,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T06:06:21.216Z
-Stopped at: Completed 04-06-PLAN.md
+Last session: 2026-07-24T06:28:02.584Z
+Stopped at: Completed 04-07-PLAN.md
 Resume file: None
