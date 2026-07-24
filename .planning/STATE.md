@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: casa-persistente
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-07-24T04:50:29.146Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-07-24T05:00:18.418Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 26
-  completed_plans: 20
+  completed_plans: 21
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 04 (casa-persistente) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-07-24 — Phase 04 execution started
 
-Progress: [████████░░] 77%
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Progress: [████████░░] 77%
 | Phase 03 P04 | 33min | 3 tasks | 12 files |
 | Phase 03 P05 | 15min | 3 tasks | 10 files |
 | Phase 04 P01 | 10min | 3 tasks | 14 files |
+| Phase 04 P02 | 10min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-01]: view defaults to "board" not "home" — nothing in this plan sets view to home automatically, the home-as-default-entry-point behavior is deferred to Plan 04-03/04-04
 - [Phase ?]: [Phase 04-01]: upsertRecent write failures are swallowed, never rethrown into openProject — recents list is convenience, not source of truth
 - [Phase ?]: [Phase 04-01]: Tracer feedback gate checkpoint approved by orchestrator based on automated proof (10 new tests, 407/407 suite, cargo green); live-GUI appDataDir confirmation deferred to human UAT via /gsd-verify-work 4
+- [Phase ?]: [Phase 04-02]: handle_session_exit extracted with a generic notify callback (not tied to AppHandle::emit) so the reader-thread purge+emit is unit-testable without a real tauri::AppHandle/tauri::test dependency
+- [Phase ?]: [Phase 04-02]: insert_dummy_session test helper spawns a real portable_pty session (openpty + spawn_command + TreeGuard::attach) to populate PtyManager for remove_exited/handle_session_exit tests, since PtySession's private fields are only constructible via a real spawn
 
 ### Pending Todos
 
@@ -165,6 +168,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T04:50:29.127Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-07-24T05:00:18.398Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

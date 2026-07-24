@@ -21,7 +21,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **SESS-01**: Usuário vê as sessões do Claude CLI do projeto selecionado na sidebar
 - [ ] **SESS-02**: Usuário cria nova sessão pela sidebar (spawn do `claude` no diretório do projeto)
 - [x] **SESS-03**: Usuário navega entre sessões sem fechar nenhuma — terminais continuam vivos em background
-- [ ] **SESS-04**: Sessões persistem entre aberturas do app e são restauradas ao reabrir (snapshot do buffer + histórico via `claude --resume`, restauração lazy)
+- [x] **SESS-04**: Sessões persistem entre aberturas do app e são restauradas ao reabrir (snapshot do buffer + histórico via `claude --resume`, restauração lazy)
 - [ ] **SESS-05**: Usuário renomeia sessões
 - [x] **SESS-06**: Usuário arquiva/exclui sessões, com encerramento limpo da árvore de processos (sem zombie processes)
 
@@ -30,7 +30,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **TERM-01**: Usuário interage com terminal real embutido no drawer direito rodando o `claude` interativo
 - [x] **TERM-02**: Terminal tem scrollback com limite, copiar/colar e links clicáveis
 - [x] **TERM-03**: Usuário busca texto no scrollback do terminal
-- [ ] **TERM-04**: Usuário é notificado quando uma sessão termina ou precisa de input (alerta do SO + badge na sidebar)
+- [x] **TERM-04**: Usuário é notificado quando uma sessão termina ou precisa de input (alerta do SO + badge na sidebar)
 
 ### Board (BOARD)
 
@@ -101,13 +101,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SESS-01 | Phase 2 | Complete |
 | SESS-02 | Phase 2 | Pending |
 | SESS-03 | Phase 2 | Complete |
-| SESS-04 | Phase 4 | Pending |
+| SESS-04 | Phase 4 | Complete |
 | SESS-05 | Phase 4 | Pending |
 | SESS-06 | Phase 2 | Complete |
 | TERM-01 | Phase 2 | Pending |
 | TERM-02 | Phase 2 | Complete |
 | TERM-03 | Phase 2 | Complete |
-| TERM-04 | Phase 4 | Pending |
+| TERM-04 | Phase 4 | Complete |
 | BOARD-01 | Phase 1 | Complete |
 | BOARD-02 | Phase 1 | Complete |
 | BOARD-03 | Phase 1 | Complete |
