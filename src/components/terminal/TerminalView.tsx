@@ -45,6 +45,49 @@ function isSafeUrl(uri: string): boolean {
   return SAFE_URL_PATTERN.test(uri);
 }
 
+/**
+ * Handler de `attachCustomKeyEventHandler` (xterm.js) — extraído como
+ * função pura, sem nenhuma dependência de `Terminal`/canvas real, para que
+ * possa ser testada diretamente (o jsdom deste projeto não tem
+ * `HTMLCanvasElement.getContext`, ver a nota em `search.test.tsx` — um
+ * `Terminal` real nunca pode ser `.open()`ado num teste aqui).
+ *
+ * Ctrl+F/Cmd+F abre a search bar (02-UI-SPEC.md ## Terminal Search Bar).
+ *
+ * WR-01: Ctrl+K/Cmd+K precisa ser interceptado AQUI, na fase em que o
+ * xterm.js decide se processa a tecla como input real do PTY — um listener
+ * `window`-level sozinho (`GsdCommandToolbar.tsx`) roda DEPOIS que o xterm
+ * já despachou o keydown para seu próprio handler interno (o textarea
+ * escondido do xterm captura o evento primeiro, na fase de bubble a partir
+ * do próprio DOM target), então por si só ele chega tarde demais para
+ * impedir que Ctrl+K — o binding padrão do readline para "apagar até o
+ * fim da linha" — vaze como byte real para o PTY via `onData`. Retornar
+ * `false` aqui instrui o xterm a pular seu processamento padrão dessa
+ * tecla por completo, então `onData` nunca dispara para ela. Abrir a
+ * paleta em si continua sendo responsabilidade independente do listener
+ * `window`-level do `GsdCommandToolbar` (ele precisa funcionar mesmo com o
+ * terminal sem foco) — o único trabalho deste handler é garantir que o
+ * atalho nunca alcance o PTY.
+ */
+export function createTerminalKeyHandler(
+  onOpenSearch: () => void,
+): (event: KeyboardEvent) => boolean {
+  return (event) => {
+    if (event.type !== "keydown") return true;
+    const mod = event.ctrlKey || event.metaKey;
+    if (mod && event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      onOpenSearch();
+      return false;
+    }
+    if (mod && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      return false;
+    }
+    return true;
+  };
+}
+
 // Valores EXATOS de `02-UI-SPEC.md` ## Terminal Chrome & xterm Theme —
 // xterm.js exige hex/rgba literais, não lê custom properties de CSS.
 const FONT_FAMILY = '"JetBrains Mono Variable", ui-monospace, "Cascadia Code", monospace';
@@ -232,19 +275,10 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
           }),
         );
 
-        // Ctrl+F/Cmd+F com o terminal focado abre a search bar
-        // (02-UI-SPEC.md ## Terminal Search Bar) — `preventDefault` para
-        // que o navegador não abra sua própria busca nativa, e `return
-        // false` para que o xterm.js não insira o atalho como input do PTY.
-        t.attachCustomKeyEventHandler((event) => {
-          if (event.type !== "keydown") return true;
-          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
-            event.preventDefault();
-            setSearchOpen(true);
-            return false;
-          }
-          return true;
-        });
+        // Ctrl+F/Cmd+F abre a search bar; Ctrl+K/Cmd+K (WR-01) é engolido
+        // aqui para nunca vazar como byte para o PTY — ver
+        // `createTerminalKeyHandler` acima.
+        t.attachCustomKeyEventHandler(createTerminalKeyHandler(() => setSearchOpen(true)));
       },
       loadWebglAddon: (t) => {
         const addon = new WebglAddon();
