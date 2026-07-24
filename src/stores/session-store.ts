@@ -535,6 +535,19 @@ export const useSessionStore = create<SessionStoreState>()(
       set((state) => {
         state.activeSessionId = sessionId;
         state.lastFocusedSessionId = sessionId;
+      });
+
+      // Pitfall 2 (04-RESEARCH.md): usa a PRÓPRIA `projectRoot` persistida
+      // da sessão como cwd — NUNCA `activeProjectRoot`/o projeto
+      // atualmente aberto, que pode ser um projeto diferente do dono desta
+      // sessão (PROJ-05 mantém múltiplos projetos abertos ao mesmo tempo).
+      // `origin` permanece "historical"/"restored" durante este await — a
+      // sessão renderiza `variant="starting"` (pulse, 04-UI-SPEC.md ##
+      // Color) na row já ativa até o spawn resolver, mesmo tratamento
+      // visual de "starting" que uma sessão nova recebe.
+      await spawnSession(sessionId, session.projectRoot, () => {}, ["--resume", sessionId]);
+
+      set((state) => {
         // Uma sessão retomada com sucesso passa a ter um PtySession vivo de
         // verdade — nunca mais "historical"/"restored" (ambos significam
         // exatamente "sem PtySession viva"), promovida para "live" como
@@ -542,12 +555,6 @@ export const useSessionStore = create<SessionStoreState>()(
         const descriptor = state.sessions.find((candidate) => candidate.id === sessionId);
         if (descriptor) descriptor.origin = "live";
       });
-
-      // Pitfall 2 (04-RESEARCH.md): usa a PRÓPRIA `projectRoot` persistida
-      // da sessão como cwd — NUNCA `activeProjectRoot`/o projeto
-      // atualmente aberto, que pode ser um projeto diferente do dono desta
-      // sessão (PROJ-05 mantém múltiplos projetos abertos ao mesmo tempo).
-      await spawnSession(sessionId, session.projectRoot, () => {}, ["--resume", sessionId]);
     },
 
     persistSnapshot: (sessionId: string, snapshot: string) => {

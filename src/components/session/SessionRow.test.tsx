@@ -234,18 +234,29 @@ describe("SessionRow — dot ativo por atividade (ACT-03)", () => {
   });
 });
 
-describe("SessionRow — variante historical", () => {
-  it("clique numa row histórica NÃO chama onSelect e mostra o tooltip session.row.historicalTooltip", () => {
+describe("SessionRow — variante historical/restored (SESS-04)", () => {
+  it("clique numa row histórica/restaurada CHAMA onSelect com o id — resumeSession substitui o placeholder da Fase 2", () => {
     const session = makeSession({ origin: "historical" });
     const onSelect = vi.fn();
     render(<SessionRow session={session} variant="historical" onSelect={onSelect} />);
 
     fireEvent.click(screen.getByRole("button"));
 
-    expect(onSelect).not.toHaveBeenCalled();
-    expect(
-      screen.getByText("Sessão de execuções anteriores — retomar chega na Fase 4"),
-    ).toBeInTheDocument();
+    expect(onSelect).toHaveBeenCalledWith(session.id);
+  });
+
+  it("mostra o ícone History (14px, muted) com o tooltip session.row.restoredTooltip", () => {
+    const session = makeSession({ origin: "historical" });
+    render(<SessionRow session={session} variant="historical" />);
+
+    expect(screen.getByTitle("Histórico restaurado — clique para retomar")).toBeInTheDocument();
+  });
+
+  it("a variante live NÃO mostra o ícone History", () => {
+    const session = makeSession({ origin: "live" });
+    render(<SessionRow session={session} variant="live" />);
+
+    expect(screen.queryByTitle("Histórico restaurado — clique para retomar")).not.toBeInTheDocument();
   });
 
   it("dot histórico usa o modificador CSS status-dot--outline sobre neutral", () => {

@@ -64,26 +64,40 @@ export interface LoseFocusParams {
   webglAddon: DisposableAddon | null;
   /** Redireciona o Channel do PTY: a partir de agora, bytes recebidos empilham no `backgroundBuffer` em vez de escrever num terminal que não existe mais. */
   redirectToBackground: (push: (bytes: Uint8Array) => void) => void;
+  /**
+   * SESS-04 (04-06-PLAN.md): chamado com o MESMO snapshot logo depois de
+   * guardado em `liveSession.serializedSnapshot` — grava em disco
+   * (`session-<id>.json` via `persistence/session-snapshot.ts`), estendendo
+   * o fluxo em memória do SESS-03 sem duplicar a lógica de
+   * quando/o-que-serializar. `undefined` preserva o comportamento
+   * puro-em-memória original (usado por chamadores/testes que não
+   * precisam de persistência em disco).
+   */
+  persistSnapshot?: (snapshot: string) => void;
 }
 
 /**
  * Algoritmo EXATO de perder foco (`02-RESEARCH.md` Pattern 3, "ao perder
  * foco", sessão A deixa de ser a ativa):
  * 1. dispose do webgl PRIMEIRO (recurso finito do processo)
- * 2. `serialize()` guarda o snapshot visual + scrollback
+ * 2. `serialize()` guarda o snapshot visual + scrollback (e, se `persistSnapshot`
+ *    foi fornecido, grava o MESMO snapshot em disco — SESS-04)
  * 3. dispose da instância inteira do terminal
  * 4. redireciona o onmessage do Channel para empilhar no `backgroundBuffer`
  *    — o processo PTY continua vivo e produzindo output.
  */
 export function loseFocus(params: LoseFocusParams): void {
-  const { liveSession, terminal, serializeAddon, webglAddon, redirectToBackground } = params;
+  const { liveSession, terminal, serializeAddon, webglAddon, redirectToBackground, persistSnapshot } =
+    params;
 
   if (webglAddon) {
     webglAddon.dispose();
   }
   liveSession.hasWebgl = false;
 
-  liveSession.serializedSnapshot = serializeAddon.serialize();
+  const snapshot = serializeAddon.serialize();
+  liveSession.serializedSnapshot = snapshot;
+  persistSnapshot?.(snapshot);
 
   terminal.dispose();
 

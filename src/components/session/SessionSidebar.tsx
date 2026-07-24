@@ -10,6 +10,16 @@
 // open/reopen) estão ausentes, o `ToolMissingState` substitui TODO o corpo
 // abaixo do heading — e o botão "Nova sessão" nem é renderizado (Pitfall 6:
 // nunca deixar o usuário descobrir a ausência só depois de tentar criar).
+//
+// Fase 4, Plano 06 (SESS-04): junto com `discoverSessions`, carrega os
+// metadados de sessão PERSISTIDOS (`loadPersistedSessions`, escopados por
+// `projectRoot`) — mesmo grupo visual "Histórico" que `origin:"historical"`
+// (04-UI-SPEC.md ## Color: "restored" reusa a variante `historical`, nunca
+// uma variante nova). O clique nesse grupo agora chama `resumeSession`
+// (T-04-16 guard + snapshot rehidratado + `claude --resume`), substituindo
+// o placeholder de hint da Fase 2 — a row em retomada (`activeSessionId`
+// igual ao seu id, `origin` ainda não promovido para `live`) renderiza
+// `variant="starting"` (mesmo pulse de uma sessão nova).
 
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
@@ -58,6 +68,8 @@ export function SessionSidebar() {
   const createSession = useSessionStore((state) => state.createSession);
   const focusSession = useSessionStore((state) => state.focusSession);
   const discoverSessions = useSessionStore((state) => state.discoverSessions);
+  const loadPersistedSessions = useSessionStore((state) => state.loadPersistedSessions);
+  const resumeSession = useSessionStore((state) => state.resumeSession);
 
   // Claude CLI (checagem GLOBAL, independente de projeto): só na primeira
   // montagem da sidebar (app boot), nunca por projeto.
@@ -76,13 +88,17 @@ export function SessionSidebar() {
     };
   }, []);
 
-  // Descoberta de sessões históricas: reavalia a cada open/reopen de
-  // projeto (nunca antes de um `projectRoot` já validado existir).
+  // Descoberta de sessões históricas + carregamento de sessões restauradas
+  // (SESS-04): reavalia a cada open/reopen de projeto (nunca antes de um
+  // `projectRoot` já validado existir). As duas chamadas são independentes
+  // (fontes de dado diferentes — `.jsonl` em disco vs. `app-state.json`) e
+  // nunca spawnam um PtySession por si só.
   useEffect(() => {
     if (projectRoot) {
       void discoverSessions(projectRoot);
+      void loadPersistedSessions(projectRoot);
     }
-  }, [projectRoot, discoverSessions]);
+  }, [projectRoot, discoverSessions, loadPersistedSessions]);
 
   // Antes da primeira resolução de `checkClaudeOnPath` (`claudePath`
   // continua `undefined`), nunca afirma "ausente" preventivamente — só
@@ -91,8 +107,12 @@ export function SessionSidebar() {
     claudePath === undefined ? "none" : deriveToolMissingState(claudePath, hasGsdCore);
 
   const activeSessions = sessions.filter((session) => session.origin === "live").sort(byLastModifiedDesc);
+  // SESS-04: `restored` (metadado persistido de uma execução anterior) reusa
+  // o MESMO grupo visual/variante `historical` de `origin:"historical"`
+  // (.jsonl descoberto em disco) — 04-UI-SPEC.md ## Color não introduz uma
+  // variante nova para isso, ambos significam "sem PtySession viva ainda".
   const historicalSessions = sessions
-    .filter((session) => session.origin === "historical")
+    .filter((session) => session.origin === "historical" || session.origin === "restored")
     .sort(byLastModifiedDesc);
 
   return (
@@ -179,7 +199,17 @@ export function SessionSidebar() {
               <>
                 <p style={GROUP_LABEL_STYLE}>{t("sidebar.groups.history")}</p>
                 {historicalSessions.map((session) => (
-                  <SessionRow key={session.id} session={session} variant="historical" />
+                  <SessionRow
+                    key={session.id}
+                    session={session}
+                    // SESS-04: a row sendo retomada agora (clicada, ainda sem
+                    // PtySession viva — `origin` só é promovido a "live"
+                    // depois que `resumeSession` termina o spawn) recebe o
+                    // mesmo tratamento visual "starting" (pulse) de uma
+                    // sessão nova, 04-UI-SPEC.md ## Color.
+                    variant={session.id === activeSessionId ? "starting" : "historical"}
+                    onSelect={(id) => void resumeSession(id).catch(() => {})}
+                  />
                 ))}
               </>
             ) : null}

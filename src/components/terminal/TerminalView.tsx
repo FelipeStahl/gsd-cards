@@ -163,6 +163,11 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
     const sessionStore = useSessionStore.getState();
     const isNewSession = !sessionStore.hasLiveSession(sessionId);
     const liveSession = sessionStore.getOrCreateLiveSession(sessionId);
+    // SESS-04 (04-06-PLAN.md): o descriptor desta sessão em `sessions[]` —
+    // usado só para decidir, abaixo, entre `spawnSession` (sessão nova) e
+    // `resumeSession` (sessão restaurada de uma execução anterior, sem
+    // PtySession viva ainda).
+    const sessionDescriptor = sessionStore.sessions.find((session) => session.id === sessionId);
 
     let disposed = false;
     const disposables: { dispose(): void }[] = [];
@@ -180,33 +185,48 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
     // desmontar.
 
     if (isNewSession) {
-      // Registra o Channel/processo ANTES de `gainFocus` abaixo — o
-      // redirect síncrono de `gainFocus` (via `setSessionBytesHandler`)
-      // sobrescreve este handler inicial antes que qualquer byte real
-      // possa chegar (o roundtrip do `invoke()` é assíncrono; o canal só
-      // existe de fato depois dele). `spawnSession` só é chamado esta UMA
-      // vez por sessão — trocar de foco depois nunca volta a chamá-lo.
-      void spawnSession(sessionId, projectRoot, () => {}).then(
-        () => {
-          // O resize síncrono feito por `fitAndResize` logo abaixo pode ter
-          // corrido antes do backend confirmar o spawn (sessão nova) — este
-          // segundo resize, feito com o tamanho ATUAL do terminal (que já
-          // pode ter mudado se o usuário trocou de sessão nesse meio
-          // tempo), garante que o PTY real fique com o tamanho certo.
-          if (!disposed && terminalRef.current) {
-            void resizeSession(sessionId, terminalRef.current.cols, terminalRef.current.rows).catch(
-              () => {},
-            );
-          }
-        },
-        (error: unknown) => {
-          if (!disposed) {
-            terminalRef.current?.write(
-              `\r\n\x1b[31mNão foi possível iniciar esta sessão: ${String(error)}\x1b[0m\r\n`,
-            );
-          }
-        },
-      );
+      if (sessionDescriptor?.origin === "restored") {
+        // SESS-04: uma sessão restaurada (persistida em `app-state.json` de
+        // uma execução anterior) NUNCA é um spawn "novo" — `resumeSession`
+        // valida o id (T-04-16, flag-injection), lê a PRÓPRIA `projectRoot`
+        // da sessão (nunca a prop `projectRoot` deste componente, que
+        // reflete o projeto ATIVO — Pitfall 2 de 04-RESEARCH.md), carrega o
+        // snapshot em disco e só então chama `spawnSession` com
+        // `["--resume", id]`. Rede de segurança/idempotente: na prática
+        // `hasLiveSession` já é `true` por aqui na maioria dos casos (o
+        // clique na row em `SessionSidebar` já chamou `resumeSession`
+        // ANTES de `activeSessionId` mudar e este efeito montar) —
+        // `resumeSession` detecta isso e só refoca, nunca spawna de novo.
+        void useSessionStore.getState().resumeSession(sessionId);
+      } else {
+        // Registra o Channel/processo ANTES de `gainFocus` abaixo — o
+        // redirect síncrono de `gainFocus` (via `setSessionBytesHandler`)
+        // sobrescreve este handler inicial antes que qualquer byte real
+        // possa chegar (o roundtrip do `invoke()` é assíncrono; o canal só
+        // existe de fato depois dele). `spawnSession` só é chamado esta UMA
+        // vez por sessão — trocar de foco depois nunca volta a chamá-lo.
+        void spawnSession(sessionId, projectRoot, () => {}).then(
+          () => {
+            // O resize síncrono feito por `fitAndResize` logo abaixo pode ter
+            // corrido antes do backend confirmar o spawn (sessão nova) — este
+            // segundo resize, feito com o tamanho ATUAL do terminal (que já
+            // pode ter mudado se o usuário trocou de sessão nesse meio
+            // tempo), garante que o PTY real fique com o tamanho certo.
+            if (!disposed && terminalRef.current) {
+              void resizeSession(sessionId, terminalRef.current.cols, terminalRef.current.rows).catch(
+                () => {},
+              );
+            }
+          },
+          (error: unknown) => {
+            if (!disposed) {
+              terminalRef.current?.write(
+                `\r\n\x1b[31mNão foi possível iniciar esta sessão: ${String(error)}\x1b[0m\r\n`,
+              );
+            }
+          },
+        );
+      }
     }
 
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -319,6 +339,14 @@ export function TerminalView({ sessionId, projectRoot }: TerminalViewProps) {
           serializeAddon,
           webglAddon,
           redirectToBackground: (push) => setSessionBytesHandler(sessionId, push),
+          // SESS-04 (04-06-PLAN.md): estende o fluxo em memória do SESS-03 —
+          // o MESMO snapshot que acaba de ser guardado em
+          // `currentLiveSession.serializedSnapshot` também é gravado em
+          // disco (`session-<id>.json`), pronto para uma restauração lazy
+          // numa próxima abertura do app.
+          persistSnapshot: (snapshot) => {
+            useSessionStore.getState().persistSnapshot(sessionId, snapshot);
+          },
         });
       } else {
         // Sessão já foi encerrada (arquivar/excluir/kill) antes deste
