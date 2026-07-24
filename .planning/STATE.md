@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 03
-current_phase_name: board-interativo
-status: verifying
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-07-24T03:14:33.958Z"
+current_phase: 04
+current_phase_name: casa-persistente
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-07-24T04:50:29.146Z"
 last_activity: 2026-07-24
-last_activity_desc: Phase 03 execution started
+last_activity_desc: Phase 04 execution started
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 26
+  completed_plans: 20
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-22)
 
 **Core value:** Abrir o app e ver fielmente, em tempo real, onde cada projeto GSD está — o board é um espelho confiável do `.planning/`.
-**Current focus:** Phase 03 — board-interativo
+**Current focus:** Phase 04 — casa-persistente
 
 ## Current Position
 
-Phase: 03 (board-interativo) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-07-24 — Phase 03 execution started
+Phase: 04 (casa-persistente) — EXECUTING
+Plan: 2 of 7
+Status: Ready to execute
+Last activity: 2026-07-24 — Phase 04 execution started
 
-Progress: [██████████] 100%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [██████████] 100%
 | Phase 03 P03 | 8min | 3 tasks | 9 files |
 | Phase 03 P04 | 33min | 3 tasks | 12 files |
 | Phase 03 P05 | 15min | 3 tasks | 10 files |
+| Phase 04 P01 | 10min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,10 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03-05]: commands.list.status.command resolves to /gsd-stats (not the /gsd-status carried verbatim in 03-UI-SPEC.md) - .claude/commands/gsd-stats.md exists, gsd-status.md does not; i18n key name kept unchanged
 - [Phase ?]: [Phase 03-05]: CommandPalette.tsx built during Task 2 (not Task 3) because GsdCommandToolbar unconditionally imports/renders it and GSD_COMMANDS flows back into CommandPalette - a circular data/render relationship the plan itself designs; Task 3 added CommandPalette.test.tsx against the already-working component
 - [Phase ?]: [Phase 03-05]: focusTerminalSurface() queries the DOM globally for the single .xterm-helper-textarea instead of a ref threaded through TerminalView.tsx (outside this plan's files_modified) - safe because the app mounts at most one live terminal instance at a time (WebGL context limit architecture)
+- [Phase ?]: [Phase 04-01]: Task 1 package legitimacy checkpoint resolved via orchestrator pre-authorization (both plugin-store/plugin-notification are official tauri-apps org, SUS verdict was a sandbox download-telemetry gap)
+- [Phase ?]: [Phase 04-01]: view defaults to "board" not "home" — nothing in this plan sets view to home automatically, the home-as-default-entry-point behavior is deferred to Plan 04-03/04-04
+- [Phase ?]: [Phase 04-01]: upsertRecent write failures are swallowed, never rethrown into openProject — recents list is convenience, not source of truth
+- [Phase ?]: [Phase 04-01]: Tracer feedback gate checkpoint approved by orchestrator based on automated proof (10 new tests, 407/407 suite, cargo green); live-GUI appDataDir confirmation deferred to human UAT via /gsd-verify-work 4
 
 ### Pending Todos
 
@@ -160,6 +165,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T03:14:33.944Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-07-24T04:50:29.127Z
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None

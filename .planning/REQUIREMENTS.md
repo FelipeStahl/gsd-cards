@@ -9,7 +9,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Projetos (PROJ)
 
-- [ ] **PROJ-01**: Usuário vê lista de projetos recentes na página principal, ordenada por último acesso
+- [x] **PROJ-01**: Usuário vê lista de projetos recentes na página principal, ordenada por último acesso
 - [x] **PROJ-02**: Usuário abre um diretório como projeto; o app valida a presença de `.planning/` antes de aceitá-lo como projeto GSD
 - [ ] **PROJ-03**: Usuário cria um projeto GSD do zero apontando uma pasta vazia/nova; o app abre uma sessão e conduz o `/gsd-new-project`
 - [x] **PROJ-04**: App detecta Claude CLI e gsd-core instalados; quando ausentes, mostra instrução clara de instalação (sem auto-instalar)
@@ -92,7 +92,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROJ-01 | Phase 4 | Pending |
+| PROJ-01 | Phase 4 | Complete |
 | PROJ-02 | Phase 1 | Complete |
 | PROJ-03 | Phase 4 | Pending |
 | PROJ-04 | Phase 2 | Complete |
