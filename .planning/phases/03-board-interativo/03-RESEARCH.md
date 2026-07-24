@@ -467,17 +467,17 @@ useEffect(() => {
 | A2 | ~500ms quiescence and "immediate flip to busy" are the right thresholds for Claude CLI's actual output cadence | `## Architecture Patterns` Pattern 3 | Too short → flickers busy/idle on normal redraw cadence (spinner ticks, streaming tokens); too long → guard blocks injection longer than necessary after Claude actually finishes. Named constant (`QUIESCENCE_MS`) makes this a one-line tuning fix, not a rewrite |
 | A3 | `strip-ansi`'s automated-tool `SUS` verdict reflects a data-availability gap in this sandbox rather than a real legitimacy problem | `## Package Legitimacy Audit` | If actually compromised/typosquatted (it is not — `chalk/strip-ansi` is a well-known, long-standing package), installing it unverified would pull untrusted code into the renderer bundle. Mitigated by the required `checkpoint:human-verify` gate before install |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the awaiting-permission prefill also handle multi-option prompts beyond "Yes/No" (e.g., Claude's 3-option confirm dialogs)?**
    - What we know: `03-CONTEXT.md`/`03-UI-SPEC.md` only specify prefill-don't-send behavior; they don't specify inspecting *which* options are on screen.
    - What's unclear: Whether the classifier needs to distinguish "awaiting permission" sub-variants, or whether one `awaiting` state covering all confirm-style prompts is sufficient for MVP.
-   - Recommendation: Treat as out of scope for this phase — one `awaiting` state is what both locked documents specify. Revisit only if verification reveals real prompt variants that need different guard copy.
+   - RESOLVED — Recommendation: Treat as out of scope for this phase — one `awaiting` state is what both locked documents specify. Revisit only if verification reveals real prompt variants that need different guard copy.
 
 2. **Does a completed/exited `claude` process (session ended, e.g. user typed `/exit`) need its own activity state, or does it fall back to the existing `exited` `SessionRowVariant`?**
    - What we know: `SessionRowVariant` already has an `exited` slot (Phase 2), independent from the new `idle`/`busy`/`awaiting` activity states this phase adds.
    - What's unclear: Whether `exited` should suppress/override activity-dot rendering entirely, or coexist.
-   - Recommendation: `exited` wins — `03-UI-SPEC.md`'s "Supersedes note" scopes the new activity-aware dot to `variant === "live"` rows only, so this is already resolved by the UI-SPEC; flagged here only so the plan doesn't re-litigate it.
+   - RESOLVED — Recommendation: `exited` wins — `03-UI-SPEC.md`'s "Supersedes note" scopes the new activity-aware dot to `variant === "live"` rows only, so this is already resolved by the UI-SPEC; flagged here only so the plan doesn't re-litigate it.
 
 ## Environment Availability
 
