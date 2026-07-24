@@ -185,7 +185,7 @@ Plans:
   2. Usuário instala o app via instalador empacotado (Windows primeiro; macOS/Linux também).
   3. O app detecta uma nova versão e se atualiza automaticamente.
 
-**Plans**: 1/4 plans executed
+**Plans**: 3/4 plans executed
 Plans:
 **Wave 1**
 
@@ -197,7 +197,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 05-03-PLAN.md — DIST-03 frontend: wrapper check-update (cache/never-throws) + update-store + UpdateIndicator (5 estados) + namespace update + check no boot do AppShell + montagens
+- [x] 05-03-PLAN.md — DIST-03 frontend: wrapper check-update (cache/never-throws) + update-store + UpdateIndicator (5 estados) + namespace update + check no boot do AppShell + montagens
 - [ ] 05-04-PLAN.md — DIST-02/DIST-03 config: bundle + plugins.updater (endpoint HTTPS + pubkey placeholder) + release.yml + RELEASE.md, com handoff Manual-Only da chave de assinatura
 
 **UI hint**: yes
@@ -213,4 +213,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Sessão viva | 6/6 | In Progress|  |
 | 3. Board interativo | 5/5 | In Progress|  |
 | 4. Casa persistente | 7/7 | In Progress|  |
-| 5. Comunidade | 1/4 | In Progress|  |
+| 5. Comunidade | 3/4 | In Progress|  |

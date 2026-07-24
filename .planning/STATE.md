@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 05
 current_phase_name: comunidade
 status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-07-24T08:30:31.653Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-07-24T08:38:29.984Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 30
-  completed_plans: 28
+  completed_plans: 29
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 05 (comunidade) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-24 — Phase 05 execution started
 
-Progress: [█████████░] 93%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -84,6 +84,7 @@ Progress: [█████████░] 93%
 | Phase 04 P07 | 20min | 2 tasks | 10 files |
 | Phase 05-comunidade P01 | 24min | 3 tasks | 15 files |
 | Phase 05-comunidade P02 | 6min | 2 tasks | 6 files |
+| Phase 05 P03 | 7min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -158,6 +159,8 @@ Recent decisions affecting current work:
 - [Phase ?]: DIST-01: LanguageSwitcher's full-name aria-label/title are i18n keys, so they read in the CURRENT UI language (not a fixed autonym) — literal reading of the UI-SPEC copywriting contract
 - [Phase ?]: [Phase 05-02]: Granted updater:allow-check + updater:allow-download-and-install + process:allow-restart (not updater:default) per RESEARCH.md Pitfall 2 — preserves capabilities/default.json's own no-catch-all rule
 - [Phase ?]: [Phase 05-02]: Package legitimacy checkpoint for plugin-updater/plugin-process resolved via orchestrator pre-authorization — same tauri-apps org/repo already trusted for five plugins across Phases 1-4, SUS verdict was a sandbox telemetry gap
+- [Phase ?]: update-store stores the live plugin Update object (pendingUpdate) alongside state/percent/version so available/error actions can re-invoke installUpdateAndRelaunch without re-checking
+- [Phase ?]: installUpdateAndRelaunch accepts an optional onProgress callback wired to the plugin's Started/Progress download events (not a synthetic timer) to drive the downloading state's percent label
 
 ### Pending Todos
 
@@ -193,6 +196,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T08:30:31.636Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-07-24T08:38:29.967Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
