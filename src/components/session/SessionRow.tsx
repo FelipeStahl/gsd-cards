@@ -66,7 +66,6 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
   const [isRenaming, setIsRenaming] = useState(false);
   const hintTimeoutRef = useRef<number | undefined>(undefined);
   const archiveSession = useSessionStore((state) => state.archiveSession);
-  const renameSession = useSessionStore((state) => state.renameSession);
 
   useEffect(() => {
     return () => {
@@ -106,15 +105,6 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
   function handleRenameClick(event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
     setIsRenaming(true);
-  }
-
-  function handleRenameConfirm(value: string) {
-    renameSession(session.id, value);
-    setIsRenaming(false);
-  }
-
-  function handleRenameCancel() {
-    setIsRenaming(false);
   }
 
   // Nome customizado (SESS-05) substitui o label derivado em todo lugar que
@@ -197,9 +187,9 @@ export function SessionRow({ session, variant, active = false, onSelect }: Sessi
         )}
         {isRenaming ? (
           <RenameSessionControl
+            sessionId={session.id}
             initialValue={session.name ?? ""}
-            onConfirm={handleRenameConfirm}
-            onCancel={handleRenameCancel}
+            onDone={() => setIsRenaming(false)}
           />
         ) : (
           <span

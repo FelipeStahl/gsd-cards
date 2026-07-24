@@ -13,15 +13,19 @@ import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from
 import { Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { useSessionStore } from "../../stores/session-store";
+
 interface RenameSessionControlProps {
+  sessionId: string;
   /** Valor inicial do input — nome atual da sessão, ou "" se ainda sem nome customizado. */
   initialValue: string;
-  onConfirm: (value: string) => void;
-  onCancel: () => void;
+  /** Chamado após confirmar OU cancelar — a row volta ao label estático em ambos os casos. */
+  onDone: () => void;
 }
 
-export function RenameSessionControl({ initialValue, onConfirm, onCancel }: RenameSessionControlProps) {
+export function RenameSessionControl({ sessionId, initialValue, onDone }: RenameSessionControlProps) {
   const { t } = useTranslation("session");
+  const renameSession = useSessionStore((state) => state.renameSession);
   const [value, setValue] = useState(initialValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -32,13 +36,18 @@ export function RenameSessionControl({ initialValue, onConfirm, onCancel }: Rena
     inputRef.current?.select();
   }, []);
 
+  function handleConfirm() {
+    renameSession(sessionId, value);
+    onDone();
+  }
+
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
       event.preventDefault();
-      onConfirm(value);
+      handleConfirm();
     } else if (event.key === "Escape") {
       event.preventDefault();
-      onCancel();
+      onDone();
     }
   }
 
@@ -82,7 +91,7 @@ export function RenameSessionControl({ initialValue, onConfirm, onCancel }: Rena
       />
       <button
         type="button"
-        onClick={() => onConfirm(value)}
+        onClick={handleConfirm}
         aria-label={t("rename.confirm")}
         title={t("rename.confirm")}
         style={{
@@ -102,7 +111,7 @@ export function RenameSessionControl({ initialValue, onConfirm, onCancel }: Rena
       </button>
       <button
         type="button"
-        onClick={onCancel}
+        onClick={onDone}
         aria-label={t("rename.cancel")}
         title={t("rename.cancel")}
         style={{
