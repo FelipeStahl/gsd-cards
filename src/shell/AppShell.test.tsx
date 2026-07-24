@@ -16,9 +16,12 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 // mockado no nível do módulo (não do plugin `@tauri-apps/plugin-store` cru)
 // para que TODOS os testes deste arquivo (inclusive os que nem tocam a
 // home) nunca façam uma chamada real de `invoke` ao plugin de store.
-// `getLanguage`/`setLanguage` (05-01-PLAN.md, DIST-01) entram no mesmo mock
-// pelo mesmo motivo: o boot-restore effect do AppShell chama `getLanguage()`
-// incondicionalmente, mesmo nos testes que não tocam idioma nenhum.
+// `getLanguage`/`setLanguage`/`SUPPORTED_LANGUAGES` (05-01-PLAN.md, DIST-01)
+// entram no mesmo mock pelo mesmo motivo: o boot-restore effect do AppShell
+// chama `getLanguage()` incondicionalmente, e o `LanguageSwitcher` agora
+// montado dentro de `Header`/`HomeScreen` (Plano 05-01 Tarefa 2) lê
+// `SUPPORTED_LANGUAGES` no PRIMEIRO render — sem isso, `undefined.map`
+// quebraria TODOS os testes deste arquivo, não só os de idioma.
 const getRecentsMock = vi.fn();
 const upsertRecentMock = vi.fn();
 const getLanguageMock = vi.fn();
@@ -29,6 +32,7 @@ vi.mock("../persistence/app-store", () => ({
   removeRecent: vi.fn(),
   getLanguage: (...args: unknown[]) => getLanguageMock(...args),
   setLanguage: (...args: unknown[]) => setLanguageMock(...args),
+  SUPPORTED_LANGUAGES: ["pt-BR", "en"],
 }));
 
 // `ProjectCard` (04-04-PLAN.md) tem sua própria suíte dedicada

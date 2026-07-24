@@ -2,9 +2,18 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const getRecentsMock = vi.fn();
+const setLanguageMock = vi.fn();
 
+// 05-01-PLAN.md (DIST-01): `HomeScreen` agora monta `LanguageSwitcher`
+// incondicionalmente no header — que importa `setLanguage`/
+// `SUPPORTED_LANGUAGES` do MESMO módulo `../../persistence/app-store`. Sem
+// estender este mock, `SUPPORTED_LANGUAGES` chegaria `undefined` no
+// `LanguageSwitcher` (o mock só cobria `getRecents`) e o `.map` quebraria
+// TODOS os testes deste arquivo, não só os que tocam idioma.
 vi.mock("../../persistence/app-store", () => ({
   getRecents: (...args: unknown[]) => getRecentsMock(...args),
+  setLanguage: (...args: unknown[]) => setLanguageMock(...args),
+  SUPPORTED_LANGUAGES: ["pt-BR", "en"],
 }));
 
 // `ProjectCard`/`CreateProjectFlow` têm suas próprias suítes dedicadas
@@ -28,6 +37,7 @@ const { HomeScreen } = await import("./HomeScreen");
 
 beforeEach(() => {
   getRecentsMock.mockReset();
+  setLanguageMock.mockReset().mockResolvedValue(undefined);
 });
 
 describe("HomeScreen", () => {

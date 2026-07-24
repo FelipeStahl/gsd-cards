@@ -14,6 +14,7 @@ import type { CSSProperties } from "react";
 
 import { EmptyState } from "../EmptyState";
 import { getRecents, type RecentProjectEntry } from "../../persistence/app-store";
+import { LanguageSwitcher } from "../../shell/LanguageSwitcher";
 import { CreateProjectFlow } from "./CreateProjectFlow";
 import { ProjectCard } from "./ProjectCard";
 
@@ -123,6 +124,7 @@ export function HomeScreen({ onOpenFolder, onOpenRecent }: HomeScreenProps) {
         <div style={{ display: "flex", alignItems: "center", gap: "var(--spacing-sm)" }}>
           {openFolderButton}
           {newProjectButton}
+          <LanguageSwitcher />
         </div>
       </header>
 

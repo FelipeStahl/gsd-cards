@@ -10,6 +10,7 @@ import { statusDotVariants, type StatusTone } from "../components/StatusBadge";
 import { SyncIndicator } from "../components/SyncIndicator";
 import { selectColumnCounts, useBoardStore } from "../stores/board-store";
 import type { BoardColumnId } from "../planning/status";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ProjectSwitcherButton } from "./ProjectSwitcherButton";
 
 const PLACEHOLDER = "—";
@@ -137,6 +138,8 @@ export function Header() {
       </div>
 
       <SyncIndicator />
+
+      <LanguageSwitcher />
     </header>
   );
 }
