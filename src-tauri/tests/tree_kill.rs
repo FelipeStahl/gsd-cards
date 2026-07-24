@@ -1,42 +1,46 @@
 // Teste de integração da prova de fundação SESS-06: spawna um processo real
-// com um neto real (via `tree_kill_helper`, ver `src/bin/tree_kill_helper.rs`),
-// aciona `TreeGuard::kill_tree` (o mecanismo sob teste — process_guard.rs) e
-// confirma via `sysinfo` — inspecionando a tabela de processos real do SO,
-// não a UI (o Pitfall 1 documentado em 02-RESEARCH.md é exatamente confundir
-// "a UI deixou de mostrar o terminal" com "a árvore morreu") — que nem o
-// filho nem o neto sobrevivem.
+// com um neto real (via `tree_kill_helper`), aciona `TreeGuard::kill_tree`
+// (o mecanismo sob teste — process_guard.rs) e confirma via `sysinfo` —
+// inspecionando a tabela de processos real do SO, não a UI — que nem o filho
+// nem o neto sobrevivem. Não-vacuoso: também afirma que ambos estão vivos
+// antes do kill.
 //
-// Não-vacuoso por construção: também afirma que ambos os PIDs estão VIVOS
-// antes do kill. Sem essa asserção positiva, um bug que fizesse o teste
-// nunca encontrar os PIDs certos (ex.: parsing errado da linha do neto)
-// passaria silenciosamente "morto depois" só porque nunca esteve vivo para
-// começo de conversa.
+// ── Por que NÃO usamos PTY aqui ───────────────────────────────────────────
+// O teste original spawnava o filho num PTY (via portable-pty) para espelhar
+// produção (spawn_session). No Windows headless do CI isso NÃO funciona: o
+// ConPTY não executa o processo filho — ele trava na anexação ao pseudoconsole
+// ANTES do main() (comprovado: nem uma escrita de "prova de vida" na
+// primeiríssima linha aparecia). O mecanismo de kill de árvore, porém,
+// INDEPENDE de PTY: é Job Object (Windows) / process group via killpg (Unix),
+// e ambos funcionam sobre qualquer processo. Então spawnamos o filho com
+// `std::process::Command` (que roda de forma confiável nas três plataformas —
+// ver `pump_pty_output_forwards_bytes...` em pty.rs) e anexamos o TreeGuard
+// pelo handle/pid bruto (`from_raw_handle`/`from_pid`). No Unix o filho recebe
+// `setsid()` via `pre_exec`, virando líder de process group — exatamente o que
+// o portable-pty faz em produção — para que `killpg` alcance seus descendentes.
 //
-// ── Robustez de plataforma (hotfix de CI) ────────────────────────────────
-// 1. LEITURA TOLERANTE A ConPTY: a leitura do master do PTY NÃO usa framing
-//    por linha (`BufReader::lines`). O ConPTY do Windows reescreve os fins de
-//    linha como sequências VT (movimento de cursor), então um `\n` literal
-//    pode NUNCA aparecer no stream do master — e `lines().next()` bloqueava
-//    para sempre no runner Windows do GitHub Actions (o Unix passa `\n`
-//    literal, por isso Ubuntu/macOS sempre passaram). Em vez disso lemos bytes
-//    crus e varremos os marcadores como substrings, tolerante a ruído VT.
-// 2. WATCHDOG DE TIMEOUT: o corpo roda numa thread com um limite de tempo, para
-//    que qualquer I/O bloqueante de ConPTY (ou um `child.wait()` sobre uma
-//    árvore que o kill não alcançou) FALHE RÁPIDO com mensagem clara em vez de
-//    pendurar o job de CI por dezenas de minutos até o timeout do runner.
+// Ordem sem corrida: anexamos o TreeGuard e SÓ ENTÃO mandamos o "go" pelo
+// stdin; o filho só spawna o neto depois do go, então o neto sempre nasce
+// dentro do job/grupo. O PID do neto vem pelo stdout (pipe comum, leitura
+// confiável — sem os problemas do ConPTY). Nada no corpo bloqueia sem timeout;
+// o watchdog é rede de segurança.
 
-use std::io::Read;
+use std::io::{BufRead, BufReader, Write};
+use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+#[cfg(windows)]
+use std::os::windows::io::AsRawHandle;
+
 use gsd_cards_lib::process_guard::TreeGuard;
-use portable_pty::{native_pty_system, Child, CommandBuilder, PtySize};
 use sysinfo::{Pid, ProcessesToUpdate, System};
 
-/// Teto de tempo do teste inteiro. O caminho feliz completa em poucos segundos
-/// (as esperas de vivo/morto somam no máximo ~7s); este teto só existe para
-/// converter um hang de plataforma em uma falha rápida e legível.
 const TEST_TIMEOUT: Duration = Duration::from_secs(60);
+
+fn log_stage(msg: &str) {
+    eprintln!("[tree_kill] {msg}");
+}
 
 /// Espera até `timeout` pela condição de vivo/morto desejada, para absorver
 /// a pequena latência entre o SO processar o kill (fechar o Job Object no
@@ -58,108 +62,77 @@ fn wait_for_alive_state(sys: &mut System, pid: u32, expected_alive: bool, timeou
     }
 }
 
-/// Extrai o PID do neto do buffer acumulado do PTY, mas SÓ quando o número
-/// está comprovadamente completo (dígitos seguidos de um terminador não-dígito
-/// — o helper escreve `PID` + newline, e o ConPTY emite ao menos um CR/VT
-/// depois). Sem exigir o terminador, poderíamos parsear um número truncado que
-/// ainda está chegando pelo stream.
-fn parse_grandchild_pid(buf: &str) -> Option<u32> {
-    let start = buf.find("GRANDCHILD_PID=")? + "GRANDCHILD_PID=".len();
-    let rest = &buf[start..];
-    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
-    if digits.is_empty() {
-        return None;
-    }
-    // Precisa existir pelo menos um caractere após os dígitos (o terminador).
-    rest[digits.len()..].chars().next()?;
-    digits.parse().ok()
-}
+fn run_tree_kill_body() {
+    let helper_path = env!("CARGO_BIN_EXE_tree_kill_helper");
+    let mut command = Command::new(helper_path);
+    command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
 
-/// Lê bytes crus do master do PTY (sem depender de framing por `\n`, que o
-/// ConPTY do Windows não garante) e retorna o PID do neto assim que AMBOS os
-/// marcadores — `TREE_KILL_HELPER_READY` e um `GRANDCHILD_PID=<n>` completo —
-/// aparecerem no stream. Para de ler nesse ponto: o helper dorme para sempre
-/// segurando o slave aberto, então ler até EOF bloquearia. O watchdog do teste
-/// cobre o caso em que os bytes nunca chegam.
-fn read_grandchild_pid(reader: &mut (dyn Read)) -> u32 {
-    let mut acc = String::new();
-    let mut chunk = [0u8; 4096];
-    loop {
-        let n = reader
-            .read(&mut chunk)
-            .expect("leitura do master do PTY não deveria falhar");
-        assert!(
-            n > 0,
-            "EOF do master do PTY antes dos dois marcadores; lido até agora: {acc:?}"
-        );
-        // Marcadores e dígitos são ASCII; a conversão lossy nunca os corrompe,
-        // mesmo que um chunk caia no meio de uma sequência VT multibyte.
-        acc.push_str(&String::from_utf8_lossy(&chunk[..n]));
-        if acc.contains("TREE_KILL_HELPER_READY") {
-            if let Some(pid) = parse_grandchild_pid(&acc) {
-                return pid;
-            }
+    // No Unix, torna o filho líder de sessão/process group (como o portable-pty
+    // faz em produção via setsid) para que `killpg(child_pid)` alcance o neto.
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        // SAFETY: pre_exec roda no filho após fork, antes de exec; `setsid` é
+        // uma única syscall async-signal-safe, sem alocação.
+        unsafe {
+            command.pre_exec(|| {
+                if libc::setsid() == -1 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                Ok(())
+            });
         }
     }
-}
 
-/// Corpo real do teste. Roda numa thread de trabalho sob o watchdog de
-/// `tree_kill_leaves_no_zombies` — panics aqui (asserts) são propagados como
-/// falha real; um bloqueio indefinido vira timeout do watchdog.
-fn run_tree_kill_body() {
-    let pty_system = native_pty_system();
-    let pair = pty_system
-        .openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
-        })
-        .expect("openpty deveria funcionar no ambiente de teste");
-
-    // O binário compilado nesta mesma workspace pelo Cargo (ver Task 1 do
-    // 02-02-PLAN.md e o `[[bin]]` em Cargo.toml) — `CARGO_BIN_EXE_<name>` é
-    // injetado pelo próprio harness de teste do Cargo para qualquer target
-    // de binário do pacote.
-    let helper_path = env!("CARGO_BIN_EXE_tree_kill_helper");
-    let cmd = CommandBuilder::new(helper_path);
-
-    let mut child = pair
-        .slave
-        .spawn_command(cmd)
+    let mut child = command
+        .spawn()
         .expect("spawn do tree_kill_helper deveria funcionar");
-    // Mesma exigência da API do portable-pty seguida em
-    // pty.rs::spawn_session: o slave só deve viver no processo filho depois
-    // do spawn.
-    drop(pair.slave);
+    let child_pid = child.id();
+    log_stage(&format!("filho spawnado pid={child_pid}"));
 
-    // TreeGuard::attach no MESMO INSTANTE do spawn, exatamente como em
-    // produção (pty.rs::spawn_session) — nunca adicionado depois; o kill de
-    // árvore depende dessa associação ter acontecido antes de qualquer
-    // descendente existir.
-    let mut guard = TreeGuard::attach(child.as_ref() as &dyn Child)
-        .expect("TreeGuard::attach deveria funcionar sobre um processo real recém-spawnado");
+    // TreeGuard::attach ANTES de mandar o "go" — como em produção, a associação
+    // acontece antes de qualquer descendente existir (o filho só spawna o neto
+    // depois de receber o go). Sem PTY: anexa pelo handle/pid bruto.
+    #[cfg(windows)]
+    let mut guard = TreeGuard::from_raw_handle(child.as_raw_handle())
+        .expect("TreeGuard::from_raw_handle deveria funcionar sobre um processo real");
+    #[cfg(unix)]
+    let mut guard = TreeGuard::from_pid(child_pid);
 
-    let child_pid = child
-        .process_id()
-        .expect("child deveria ter pid logo após o spawn");
+    // Libera o filho para spawnar o neto (ele estava bloqueado lendo o stdin).
+    {
+        let mut stdin = child.stdin.take().expect("stdin do filho deveria estar piped");
+        stdin
+            .write_all(b"go\n")
+            .expect("deveria conseguir mandar o sinal 'go' pelo stdin do filho");
+        let _ = stdin.flush();
+    }
 
-    let mut reader = pair
-        .master
-        .try_clone_reader()
-        .expect("reader do master do PTY deveria funcionar");
-
-    // Leitura tolerante a ConPTY (ver nota no topo do arquivo): varre bytes
-    // crus pelos marcadores em vez de exigir framing por `\n`. A presença do
-    // `TREE_KILL_HELPER_READY` é pré-requisito para extrair o PID do neto, o
-    // que preserva a exigência de ordem/marcador do teste original.
-    let grandchild_pid = read_grandchild_pid(reader.as_mut());
+    // Lê o PID do neto pelo stdout (pipe comum — leitura confiável). O helper
+    // escreve a linha e dorme, então `lines().next()` retorna assim que a linha
+    // chega, sem esperar EOF. Se o filho morrer sem escrever, vem EOF → None →
+    // panic claro (não hang).
+    let stdout = child.stdout.take().expect("stdout do filho deveria estar piped");
+    let mut lines = BufReader::new(stdout).lines();
+    let line = lines
+        .next()
+        .expect("stdout do filho deveria produzir a linha do PID do neto")
+        .expect("linha do PID do neto deveria ser lida sem erro de IO");
+    let grandchild_pid: u32 = line
+        .trim()
+        .strip_prefix("GRANDCHILD_PID=")
+        .unwrap_or_else(|| panic!("linha inesperada do helper (esperava GRANDCHILD_PID=<pid>): {line:?}"))
+        .trim()
+        .parse()
+        .expect("PID do neto deveria ser um u32 válido");
+    log_stage(&format!("neto reportado pid={grandchild_pid}"));
 
     let mut sys = System::new();
 
-    // Não-vacuoso: confirma que ambos os PIDs estão de fato vivos ANTES do
-    // kill — ver nota no topo do arquivo sobre por que essa asserção
-    // positiva importa.
+    // Não-vacuoso: confirma que ambos os PIDs estão de fato vivos ANTES do kill.
     assert!(
         wait_for_alive_state(&mut sys, child_pid, true, Duration::from_secs(2)),
         "processo filho (pid {child_pid}) deveria estar vivo antes do kill_tree"
@@ -168,19 +141,19 @@ fn run_tree_kill_body() {
         wait_for_alive_state(&mut sys, grandchild_pid, true, Duration::from_secs(2)),
         "processo neto (pid {grandchild_pid}) deveria estar vivo antes do kill_tree"
     );
+    log_stage("ambos vivos — acionando kill_tree");
 
-    // O mecanismo primário sob teste (Job Object no Windows / process group
-    // no Unix via killpg) — NUNCA confiar só em Child::kill(), que mata
-    // apenas o processo direto (threat_model T-02-02 do 02-02-PLAN.md;
-    // Pattern 2 / Pitfall 1 do 02-RESEARCH.md).
+    // O mecanismo primário sob teste (Job Object no Windows / process group no
+    // Unix via killpg) — NUNCA confiar só em Child::kill(), que mata apenas o
+    // processo direto (threat_model T-02-02; Pattern 2 / Pitfall 1).
     guard
         .kill_tree()
         .expect("kill_tree não deveria falhar sobre uma árvore ainda viva");
-    // Rede de segurança, na mesma ordem usada em produção
-    // (pty.rs::kill_session): reap do processo direto, depois do mecanismo
-    // de árvore já ter sido acionado.
+    // Rede de segurança, na mesma ordem de produção (kill_session): reap do
+    // processo direto depois de acionado o mecanismo de árvore.
     let _ = child.kill();
     let _ = child.wait();
+    log_stage("kill_tree + reap concluídos");
 
     assert!(
         wait_for_alive_state(&mut sys, child_pid, false, Duration::from_secs(5)),
@@ -191,19 +164,18 @@ fn run_tree_kill_body() {
         "processo neto (pid {grandchild_pid}) ainda vivo depois de kill_tree — zumbi! \
          (Child::kill() sozinho nunca alcançaria este PID — ver Pattern 2 / T-02-02)"
     );
+    log_stage("ambos mortos — sem zumbis");
 }
 
 #[test]
 fn tree_kill_leaves_no_zombies() {
     // Watchdog: roda o corpo numa thread e falha rápido se ele não terminar
-    // dentro de `TEST_TIMEOUT`, em vez de deixar um I/O bloqueante de ConPTY
-    // pendurar o job de CI. Um panic de asserção dentro do corpo é capturado e
-    // re-propagado aqui, preservando a mensagem original da falha.
+    // dentro de `TEST_TIMEOUT`, em vez de deixar um hang inesperado pendurar o
+    // job de CI. Um panic de asserção é capturado e re-propagado, preservando
+    // a mensagem original.
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
         let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(run_tree_kill_body));
-        // Se o receiver já desistiu (timeout), o send falha silenciosamente —
-        // esperado, o teste já foi marcado como falho pelo watchdog.
         let _ = tx.send(outcome);
     });
 
@@ -211,8 +183,7 @@ fn tree_kill_leaves_no_zombies() {
         Ok(Ok(())) => {}
         Ok(Err(payload)) => std::panic::resume_unwind(payload),
         Err(_) => panic!(
-            "tree_kill_leaves_no_zombies excedeu {}s — provável hang de I/O do ConPTY \
-             ou de child.wait() nesta plataforma (fail-fast em vez de pendurar o CI)",
+            "tree_kill_leaves_no_zombies excedeu {}s — hang inesperado (ver stages [tree_kill])",
             TEST_TIMEOUT.as_secs()
         ),
     }
