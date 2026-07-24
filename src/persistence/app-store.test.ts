@@ -35,7 +35,7 @@ vi.mock("@tauri-apps/plugin-store", () => ({
   LazyStore: FakeLazyStore,
 }));
 
-const { upsertRecent, getRecents, appStore } = await import("./app-store");
+const { upsertRecent, getRecents, removeRecent, appStore } = await import("./app-store");
 
 beforeEach(() => {
   (appStore as unknown as FakeLazyStore).data.clear();
@@ -77,5 +77,21 @@ describe("app-store", () => {
     await upsertRecent({ root: "/projects/a", name: "a", lastOpened: "2026-07-24T10:00:00.000Z" });
 
     expect(store.saveCalls).toBe(before + 1);
+  });
+
+  it("removeRecent remove só a entrada com o root pedido, preservando as demais", async () => {
+    await upsertRecent({ root: "/projects/a", name: "a", lastOpened: "2026-07-24T10:00:00.000Z" });
+    await upsertRecent({ root: "/projects/b", name: "b", lastOpened: "2026-07-24T11:00:00.000Z" });
+
+    await removeRecent("/projects/a");
+
+    expect((await getRecents()).map((r) => r.root)).toEqual(["/projects/b"]);
+  });
+
+  it("removeRecent é um no-op idempotente quando o root não está na lista", async () => {
+    await upsertRecent({ root: "/projects/a", name: "a", lastOpened: "2026-07-24T10:00:00.000Z" });
+
+    await expect(removeRecent("/projects/inexistente")).resolves.toBeUndefined();
+    expect((await getRecents()).map((r) => r.root)).toEqual(["/projects/a"]);
   });
 });

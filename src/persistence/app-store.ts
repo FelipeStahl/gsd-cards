@@ -53,3 +53,15 @@ export async function upsertRecent(entry: RecentProjectEntry): Promise<void> {
 export async function getRecents(): Promise<RecentProjectEntry[]> {
   return (await appStore.get<RecentProjectEntry[]>(RECENTS_KEY)) ?? [];
 }
+
+/**
+ * Remove um recente da lista persistida (04-04-PLAN.md: ação "Remover da
+ * lista" do card de erro, PROJ-06 — projeto movido/apagado). Idempotente e
+ * nunca lança: remover um `root` que já não está na lista é um no-op.
+ */
+export async function removeRecent(root: string): Promise<void> {
+  const recents = (await appStore.get<RecentProjectEntry[]>(RECENTS_KEY)) ?? [];
+  const next = recents.filter((recent) => recent.root !== root);
+  await appStore.set(RECENTS_KEY, next);
+  await appStore.save();
+}
