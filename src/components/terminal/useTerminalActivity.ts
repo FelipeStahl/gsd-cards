@@ -48,6 +48,22 @@ export function wireTerminalActivity(
     const classified = classifyActivity(buffer);
     if (classified) {
       transition(classified);
+      // CR-02: um marcador que já casou terminou seu trabalho — descarta
+      // imediatamente o buffer para que ele nunca seja re-casado contra
+      // chunks futuros. Sem isso, um marcador `awaiting` já RESPONDIDO
+      // permanece dentro da janela rolante por até ROLLING_BUFFER_CAP
+      // caracteres seguintes: como `classifyActivity` dá precedência a
+      // `awaiting` sobre `busy`, toda classificação nessa janela continua
+      // retornando `awaiting` mesmo com output genuinamente busy chegando
+      // depois — e como o estado (`current`) já era `awaiting`, `transition`
+      // nem dispara de novo (gate de "sem mudança"), então o buffer nunca
+      // seria limpo por um mecanismo baseado só em detectar a transição de
+      // saída. `resolveInjection` trata `awaiting` como `prefill`
+      // (escreve no PTY), violando o invariante T-03-03 ("busy ⇒ blocked,
+      // zero injeção") pela duração inteira dessa janela. Limpar aqui, logo
+      // após qualquer match confirmado, garante que o texto do marcador
+      // nunca sobrevive além do byte que o completou.
+      buffer = "";
     } else {
       // Qualquer byte novo que não caia num dos marcadores ainda significa
       // "atividade acabou de acontecer" — flip imediato para busy, deixando

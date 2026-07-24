@@ -104,6 +104,51 @@ describe("wireTerminalActivity", () => {
     expect(onChangeB).not.toHaveBeenCalled();
   });
 
+  it("CR-02: awaiting respondido seguido de output busy COM o marcador esc-to-interrupt classifica busy — o awaiting antigo não fica preso no buffer", () => {
+    const onChange = vi.fn();
+    wireTerminalActivity("session-h", onChange);
+
+    emit("session-h", "Do you want to proceed?\n❯ 1. Yes");
+    expect(onChange).toHaveBeenLastCalledWith("awaiting");
+
+    // Prompt respondido — nova rajada claramente busy. Sem o fix, o texto
+    // "Do you want to proceed?" ainda estaria dentro dos últimos 2000
+    // caracteres do buffer acumulado, e AWAITING_MARKER tem precedência
+    // sobre BUSY_MARKER em `classifyActivity` — o estado ficaria preso em
+    // awaiting mesmo com "esc to interrupt" presente nesta rajada.
+    emit("session-h", "Working... (esc to interrupt)");
+
+    expect(onChange).toHaveBeenLastCalledWith("busy");
+  });
+
+  it("CR-02: awaiting respondido seguido de output busy SEM nenhum marcador também classifica busy (nunca trava em awaiting)", () => {
+    const onChange = vi.fn();
+    wireTerminalActivity("session-i", onChange);
+
+    emit("session-i", "Do you want to proceed?\n❯ 1. Yes");
+    expect(onChange).toHaveBeenLastCalledWith("awaiting");
+
+    // Sem NENHUM marcador nesta rajada — sem o fix, o AWAITING_MARKER do
+    // texto antigo ainda presente no buffer faria `classifyActivity`
+    // retornar "awaiting" de novo (mesmo estado — `transition` nem
+    // dispara `onChange`), então o `onChange` mais recente continuaria
+    // sendo "awaiting" em vez de refletir a rajada busy real.
+    emit("session-i", "algum output qualquer, sem nenhum marcador");
+
+    expect(onChange).toHaveBeenLastCalledWith("busy");
+  });
+
+  it("CR-02: um marcador awaiting fresco (após um ciclo busy anterior) continua classificando awaiting normalmente — limpar o buffer não quebra a detecção", () => {
+    const onChange = vi.fn();
+    wireTerminalActivity("session-j", onChange);
+
+    emit("session-j", "chunk busy inicial, sem marcador\n");
+    expect(onChange).toHaveBeenLastCalledWith("busy");
+
+    emit("session-j", "Do you want to proceed?\n❯ 1. Yes");
+    expect(onChange).toHaveBeenLastCalledWith("awaiting");
+  });
+
   it("o cleanup retornado limpa o timer pendente e chama clearActivityHandler", () => {
     const onChange = vi.fn();
     const cleanup = wireTerminalActivity("session-g", onChange);
