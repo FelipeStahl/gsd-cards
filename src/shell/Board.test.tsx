@@ -75,12 +75,14 @@ describe("Board — 4 colunas, cada fase exatamente uma vez", () => {
     expect(screen.getByTitle("03: Executando")).toBeInTheDocument();
     expect(screen.getByTitle("04: Verificada")).toBeInTheDocument();
 
-    // Cada fase vira exatamente um card (role="button") — 4 fases, 4 cards.
-    // Escopado às colunas (`board-columns`) para excluir o botão de
-    // alternância da faixa de histórico (`HistoryStrip`, Plano 06), que
-    // também expõe `role="button"` fora da área de colunas.
+    // Cada fase vira exatamente um card — 4 fases, 4 cards. Contado pela
+    // classe `.phase-card` (não mais por `role="button"`: desde 03-01,
+    // `PhaseCardAction` também renderiza um `<button>` dentro do card,
+    // então `role="button"` sozinho conta card+ação juntos). Escopado às
+    // colunas (`board-columns`) para excluir o botão de alternância da
+    // faixa de histórico (`HistoryStrip`, Plano 06), fora da área de colunas.
     const columns = screen.getByTestId("board-columns");
-    expect(within(columns).getAllByRole("button")).toHaveLength(4);
+    expect(columns.querySelectorAll(".phase-card")).toHaveLength(4);
   });
 
   it("fase executada sem verificação (badge executed) fica em 'Em execução' e nunca em 'Concluída'", () => {

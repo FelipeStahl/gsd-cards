@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const writeSessionMock = vi.fn();
@@ -71,5 +71,28 @@ describe("PhaseCardAction — injeção fim-a-fim (ACT-01/ACT-02)", () => {
 
     fireEvent.click(button);
     expect(writeSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("phase.id inválido (T-03-01) não renderiza nenhum botão, mesmo com sessão viva", () => {
+    withLiveActiveSession();
+    render(<PhaseCardAction phase={makePhase({ id: "3; rm -rf ~" })} />);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("writeSession rejeitando mostra board.actions.error.injectFailed e o botão volta habilitado (backstop, T-03-02)", async () => {
+    withLiveActiveSession();
+    writeSessionMock.mockRejectedValue(new Error("sessão morta"));
+
+    render(<PhaseCardAction phase={makePhase()} />);
+    const button = screen.getByRole("button", { name: "Executar" });
+    expect(button).not.toBeDisabled();
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(screen.getByText("Não foi possível enviar o comando")).toBeInTheDocument();
+    });
+    // Nunca fica travado desabilitado após o erro — continua clicável.
+    expect(button).not.toBeDisabled();
   });
 });
