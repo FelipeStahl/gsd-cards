@@ -75,9 +75,25 @@ interface BoardStoreState {
   sync: SyncState;
   /** Tela ativa (04-01-PLAN.md) — `"home"` renderiza a lista de recentes, `"board"` o shell existente. */
   view: BoardView;
+  /** Raízes de todos os projetos já abertos nesta execução (04-03-PLAN.md, PROJ-05) — nenhuma sessão de nenhum projeto listado aqui é derrubada ao trocar o ativo. */
+  openProjectRoots: string[];
+  /** Raiz do projeto atualmente ativo (board exibido) — `null` só antes do primeiro `openProject`. */
+  activeProjectRoot: string | null;
   setView: (view: BoardView) => void;
   openProject: (root: string) => Promise<void>;
   closeProject: () => void;
+  /**
+   * Troca o projeto ativo entre projetos JÁ ABERTOS (04-03-PLAN.md Pattern 3,
+   * single-watcher re-sync — decisão nomeada em 04-RESEARCH.md: NUNCA
+   * reescrever `WatcherState` num `HashMap` por projeto). Para de observar o
+   * watcher único, re-executa a mesma sequência de parse que `openProject`
+   * roda para `root` (validate → STATE.md → ROADMAP.md → varredura de fases),
+   * e reinicia o watcher já apontando para a nova raiz ativa. NUNCA toca
+   * `sessions`/`liveSessions` (vivem em `session-store.ts`, module-level Map,
+   * intocado por este store) e NUNCA chama `closeProject` — trocar de projeto
+   * não mata sessão nenhuma de projeto nenhum.
+   */
+  switchProject: (root: string) => Promise<void>;
   /** Aplica um lote de caminhos alterados (evento `planning:changed`) em uma única transição de estado. */
   reprocessPaths: (paths: string[]) => Promise<void>;
   markSyncHealthy: (timestamp: number) => void;
@@ -297,6 +313,59 @@ export function selectColumnCounts(phases: PhaseModel[]): Record<BoardColumnId, 
 }
 
 /**
+ * Sequência completa de parse de um projeto já validado (STATE.md →
+ * ROADMAP.md → varredura de fases → `ProjectStateModel`) — compartilhada por
+ * `openProject` e `switchProject` (04-03-PLAN.md Pattern 3) para que a troca
+ * de projeto ativo reutilize exatamente o mesmo caminho de código já testado
+ * pela abertura normal, em vez de duplicar/divergir a lógica de parse.
+ */
+async function loadProjectStateModel(
+  root: string,
+  hasGsdCore: boolean,
+): Promise<ProjectStateModel> {
+  const projectStatePath = statePath(root);
+  const rawState = await readPlanningText(projectStatePath);
+  const parsedState = parseStateFile(rawState, projectStatePath);
+  const projectName = deriveProjectName(root);
+
+  const roadmapModel = await loadRoadmapModel(root);
+  const scannedPhases = await scanAllPhases(root);
+  const blockers = parsedState.kind === "ok" ? parsedState.value.blockers : [];
+  const phases = buildPhaseModels(roadmapModel, scannedPhases, blockers);
+
+  if (parsedState.kind === "unrecognized") {
+    return {
+      root,
+      projectName,
+      milestone: unrecognized(parsedState.issues, parsedState.raw),
+      currentPhase: unrecognized(parsedState.issues),
+      currentPhaseName: unrecognized(parsedState.issues),
+      progress: unrecognized(parsedState.issues),
+      blockers: [],
+      phases,
+      milestones: emptyMilestones(),
+      issues: parsedState.issues,
+      hasGsdCore,
+    };
+  }
+
+  const parsed = parsedState.value;
+  return {
+    root,
+    projectName,
+    milestone: parsed.milestone,
+    currentPhase: parsed.currentPhase,
+    currentPhaseName: parsed.currentPhaseName,
+    progress: parsed.progress,
+    blockers: parsed.blockers,
+    phases,
+    milestones: emptyMilestones(),
+    issues: parsed.issues,
+    hasGsdCore,
+  };
+}
+
+/**
  * Lê e parseia `ROADMAP.md`. Nunca lança — uma falha de leitura (ex.:
  * arquivo apagado após a validação inicial) ou de parse estrutural degrada
  * para `null`, e `buildPhaseModels` continua funcionando a partir só da
@@ -451,6 +520,8 @@ export const useBoardStore = create<BoardStoreState>()(
     recentlyUpdatedPhaseIds: [],
     sync: { state: "idle", lastSyncedAt: null, degradedSince: null, reason: null },
     view: "board",
+    openProjectRoots: [],
+    activeProjectRoot: null,
 
     setView: (view: BoardView) => {
       set((state) => {
@@ -466,52 +537,24 @@ export const useBoardStore = create<BoardStoreState>()(
 
       try {
         const validated = await validateProjectRoot(root);
-        const projectStatePath = statePath(validated.root);
-        const rawState = await readPlanningText(projectStatePath);
-        const parsedState = parseStateFile(rawState, projectStatePath);
-        const projectName = deriveProjectName(validated.root);
 
         // Board (Plano 03): fases derivadas do merge entre ROADMAP.md e a
         // varredura real do disco. `scanAllPhases` já nunca lança (D-15);
         // `loadRoadmapModel` também degrada para `null` em vez de lançar.
-        const roadmapModel = await loadRoadmapModel(validated.root);
-        const scannedPhases = await scanAllPhases(validated.root);
-        const blockers = parsedState.kind === "ok" ? parsedState.value.blockers : [];
-        const phases = buildPhaseModels(roadmapModel, scannedPhases, blockers);
+        // Sequência completa compartilhada com `switchProject` (Pattern 3).
+        const projectModel = await loadProjectStateModel(validated.root, validated.hasGsdCore);
 
         set((state) => {
-          if (parsedState.kind === "unrecognized") {
-            state.project = {
-              root: validated.root,
-              projectName,
-              milestone: unrecognized(parsedState.issues, parsedState.raw),
-              currentPhase: unrecognized(parsedState.issues),
-              currentPhaseName: unrecognized(parsedState.issues),
-              progress: unrecognized(parsedState.issues),
-              blockers: [],
-              phases,
-              milestones: emptyMilestones(),
-              issues: parsedState.issues,
-              hasGsdCore: validated.hasGsdCore,
-            };
-          } else {
-            const parsed = parsedState.value;
-            state.project = {
-              root: validated.root,
-              projectName,
-              milestone: parsed.milestone,
-              currentPhase: parsed.currentPhase,
-              currentPhaseName: parsed.currentPhaseName,
-              progress: parsed.progress,
-              blockers: parsed.blockers,
-              phases,
-              milestones: emptyMilestones(),
-              issues: parsed.issues,
-              hasGsdCore: validated.hasGsdCore,
-            };
-          }
+          state.project = projectModel;
           state.status = "open";
           state.view = "board";
+          // Multi-projeto (04-03-PLAN.md, PROJ-05): registra esta raiz entre
+          // as abertas nesta execução e a torna a ativa — dedup por valor,
+          // nunca duplica a mesma raiz em `openProjectRoots`.
+          if (!state.openProjectRoots.includes(validated.root)) {
+            state.openProjectRoots.push(validated.root);
+          }
+          state.activeProjectRoot = validated.root;
         });
 
         // Casa persistente (04-01-PLAN.md): registra este projeto como
@@ -524,7 +567,7 @@ export const useBoardStore = create<BoardStoreState>()(
         // sucesso.
         void upsertRecent({
           root: validated.root,
-          name: projectName,
+          name: projectModel.projectName,
           lastOpened: new Date().toISOString(),
         }).catch(() => {
           // Falha ao persistir o recente não impede o board de abrir — a
@@ -573,6 +616,67 @@ export const useBoardStore = create<BoardStoreState>()(
         state.sync = { state: "idle", lastSyncedAt: null, degradedSince: null, reason: null };
         state.recentlyUpdatedPhaseIds = [];
       });
+    },
+
+    switchProject: async (root: string) => {
+      // Trocar para a raiz já ativa é no-op — evita derrubar/reerguer o
+      // watcher único à toa (04-03-PLAN.md acceptance criteria).
+      if (get().activeProjectRoot === root) return;
+
+      // Pattern 3 (04-RESEARCH.md, decisão nomeada — NÃO reescrever para um
+      // HashMap por projeto): um único watcher ativo por vez. Para o
+      // observador atual antes de re-sincronizar para a nova raiz ativa.
+      await stopWatching();
+
+      set((state) => {
+        state.status = "opening";
+        state.error = null;
+      });
+
+      try {
+        // T-04-07: re-executa o mesmo portão de validação/contenção que
+        // `openProject` roda — uma raiz vinda de `openProjectRoots`/recentes
+        // nunca é adotada como ativa sem revalidar `validateProjectRoot`.
+        const validated = await validateProjectRoot(root);
+        const projectModel = await loadProjectStateModel(validated.root, validated.hasGsdCore);
+
+        set((state) => {
+          state.project = projectModel;
+          state.status = "open";
+          state.view = "board";
+          if (!state.openProjectRoots.includes(validated.root)) {
+            state.openProjectRoots.push(validated.root);
+          }
+          state.activeProjectRoot = validated.root;
+          // Um glow pendente do projeto anterior citaria ids de fase que não
+          // existem (ou significam outra coisa) na raiz recém-ativada.
+          state.recentlyUpdatedPhaseIds = [];
+        });
+
+        // T-04-08 / Pitfall de sessão: switchProject NUNCA toca
+        // `sessions`/`liveSessions` (session-store.ts) e NUNCA chama
+        // `closeProject` — nenhuma sessão de nenhum projeto morre aqui.
+
+        void loadMilestoneHistory(validated.root).then((milestones) => {
+          set((state) => {
+            if (state.project && state.project.root === validated.root) {
+              state.project.milestones = milestones;
+            }
+          });
+        });
+
+        try {
+          await startWatching(planningDir(validated.root));
+          get().markSyncHealthy(Date.now());
+        } catch {
+          get().markSyncDegraded("Não foi possível iniciar o observador de arquivos");
+        }
+      } catch (error) {
+        set((state) => {
+          state.status = "error";
+          state.error = toStoreError(error);
+        });
+      }
     },
 
     reprocessPaths: async (paths: string[]) => {
