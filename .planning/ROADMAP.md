@@ -185,11 +185,11 @@ Plans:
   2. Usuário instala o app via instalador empacotado (Windows primeiro; macOS/Linux também).
   3. O app detecta uma nova versão e se atualiza automaticamente.
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — Fatia-traçadora DIST-01: seletor de idioma end-to-end (toggle → changeLanguage → persistir no app-store → restaurar no boot com validação de enum fechado) + trava de paridade dos 9 namespaces
+- [x] 05-01-PLAN.md — Fatia-traçadora DIST-01: seletor de idioma end-to-end (toggle → changeLanguage → persistir no app-store → restaurar no boot com validação de enum fechado) + trava de paridade dos 9 namespaces
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -213,4 +213,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Sessão viva | 6/6 | In Progress|  |
 | 3. Board interativo | 5/5 | In Progress|  |
 | 4. Casa persistente | 7/7 | In Progress|  |
-| 5. Comunidade | 0/4 | Not started | - |
+| 5. Comunidade | 1/4 | In Progress|  |

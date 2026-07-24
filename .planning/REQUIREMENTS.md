@@ -50,7 +50,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Distribuição (DIST)
 
-- [ ] **DIST-01**: UI disponível em pt-BR e inglês (i18n desde o início)
+- [x] **DIST-01**: UI disponível em pt-BR e inglês (i18n desde o início)
 - [ ] **DIST-02**: Usuário instala o app via instalador empacotado (Windows primeiro; macOS/Linux também)
 - [ ] **DIST-03**: App se atualiza automaticamente quando há nova versão
 
@@ -118,7 +118,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ACT-02 | Phase 3 | Complete |
 | ACT-03 | Phase 3 | Complete |
 | ACT-04 | Phase 3 | Complete |
-| DIST-01 | Phase 5 | Pending |
+| DIST-01 | Phase 5 | Complete |
 | DIST-02 | Phase 5 | Pending |
 | DIST-03 | Phase 5 | Pending |
 
