@@ -19,14 +19,19 @@ import commandsPtBR from "./locales/pt-BR/commands.json";
 import commandsEn from "./locales/en/commands.json";
 import homePtBR from "./locales/pt-BR/home.json";
 import homeEn from "./locales/en/home.json";
+import updatePtBR from "./locales/pt-BR/update.json";
+import updateEn from "./locales/en/update.json";
 
 // Estrutura deliberada: um arquivo por namespace (`common.json`, `project.json`,
 // `board.json`, `sync.json`, `artifact.json` — Plano 05, `session.json` —
 // Plano 02-01, `terminal.json` — Plano 02-05, `commands.json` — Fase 3 Plano 05,
 // a lista curada de comandos `/gsd-*` da paleta/toolbar, `home.json` — Fase 4
 // Plano 01, a home multi-projeto (04-UI-SPEC.md `## Design System`
-// "Namespace decision"), ver ## Copywriting Contract de 03-UI-SPEC.md para a
-// decisão de namespace) para que planos paralelos não disputem o mesmo arquivo.
+// "Namespace decision"), `update.json` — Fase 5 Plano 03, a auto-atualização
+// (DIST-03, 05-UI-SPEC.md `## Design System` "Namespace changes" — conceito
+// de ciclo de vida novo, sem namespace dono existente), ver ## Copywriting
+// Contract de 03-UI-SPEC.md para a decisão de namespace) para que planos
+// paralelos não disputem o mesmo arquivo.
 export const resources = {
   "pt-BR": {
     common: commonPtBR,
@@ -38,6 +43,7 @@ export const resources = {
     terminal: terminalPtBR,
     commands: commandsPtBR,
     home: homePtBR,
+    update: updatePtBR,
   },
   en: {
     common: commonEn,
@@ -49,6 +55,7 @@ export const resources = {
     terminal: terminalEn,
     commands: commandsEn,
     home: homeEn,
+    update: updateEn,
   },
 } as const;
 
@@ -57,7 +64,18 @@ void i18next.use(initReactI18next).init({
   lng: "pt-BR",
   fallbackLng: "pt-BR",
   defaultNS: "common",
-  ns: ["common", "project", "board", "sync", "artifact", "session", "terminal", "commands", "home"],
+  ns: [
+    "common",
+    "project",
+    "board",
+    "sync",
+    "artifact",
+    "session",
+    "terminal",
+    "commands",
+    "home",
+    "update",
+  ],
   interpolation: {
     escapeValue: false,
   },
