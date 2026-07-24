@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: board-interativo
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-07-24T02:39:03.926Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-07-24T02:46:15.095Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 19
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 03 (board-interativo) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-07-24 — Phase 03 execution started
 
-Progress: [████████░░] 84%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [████████░░] 84%
 | Phase 02 P06 | 25min | 2 tasks | 16 files |
 | Phase 03 P01 | 21min | 3 tasks | 13 files |
 | Phase 03 P02 | 6min | 2 tasks | 2 files |
+| Phase 03 P03 | 8min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03-01]: phase.id inválido (T-03-01) não renderiza botão algum — mesmo tratamento de complete, não um botão desabilitado
 - [Phase ?]: [Phase 03-01]: PtyManager::write extraído como método público (precedente kill_all) para o teste de integração externo write_session_rejects.rs provar o PtyError::NotFound real
 - [Phase ?]: [Phase 03-02]: Package legitimacy checkpoint for strip-ansi resolved via orchestrator pre-authorization (SUS verdict was a sandbox download-telemetry gap, publisher sindresorhus/chalk, no red flags)
+- [Phase ?]: [Phase 03-03]: classifyActivity nunca retorna idle - so busy/awaiting/null; idle e responsabilidade exclusiva do caller (wireTerminalActivity) via timer de quiescencia, ja que silencio nao e observavel a partir de uma unica string
+- [Phase ?]: [Phase 03-03]: wireTerminalActivity chama clearActivityHandler incondicionalmente no teardown do effect do TerminalView (unmount E troca de sessao) - redundante-mas-seguro com o delete que killSession ja faz no mesmo mapa
 
 ### Pending Todos
 
@@ -149,6 +152,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T02:39:03.912Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-07-24T02:46:15.081Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
