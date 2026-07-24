@@ -13,5 +13,10 @@
   },
   "chrome": {
     "exitedBanner": "Sessão encerrada"
+  },
+  "activity": {
+    "idle": "Ocioso",
+    "busy": "Ocupado",
+    "awaiting": "Aguardando permissão"
   }
 }
