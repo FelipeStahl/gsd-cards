@@ -148,6 +148,7 @@ None yet.
 |-------|-------|--------|
 | 1 | verification_deferred_human | /gsd-verify-work 1 |
 | 2 | verification_deferred_human | /gsd-verify-work 2 |
+| 3 | verification_deferred_human | /gsd-verify-work 3 |
 
 ## Deferred Items
 
