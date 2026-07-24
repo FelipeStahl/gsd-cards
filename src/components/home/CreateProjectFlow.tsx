@@ -31,6 +31,15 @@ import { useSessionStore } from "../../stores/session-store";
  * conversa (tipicamente alguns segundos até o primeiro artefato surgir). */
 const POLL_INTERVAL_MS = 1000;
 
+/** CR-03 (04-REVIEW.md): teto de espera por `.planning/` aparecer — sem
+ * isso, uma sessão travada/quebrada mantinha o spinner girando para
+ * sempre, sem nenhuma saída. 60s é generoso o bastante para o Q&A real de
+ * `/gsd-new-project` (a conversa em si é assíncrona, respondida pelo
+ * próprio usuário no mini-terminal — o timeout só protege contra o
+ * processo nunca terminar/travar, não contra o usuário demorar para
+ * responder perguntas). */
+const POLL_TIMEOUT_MS = 60_000;
+
 /** Teto defensivo do buffer de output acumulado do mini-terminal (CR-02) —
  * uma sessão que produz muito texto (ex.: `/gsd-new-project` narrando saída
  * verbosa) nunca deve crescer esta string sem limite pela vida do diálogo;
@@ -38,18 +47,50 @@ const POLL_INTERVAL_MS = 1000;
  * prompt em andamento. */
 const MAX_TERMINAL_OUTPUT_CHARS = 20_000;
 
-type FlowPhase = "notEmpty" | "progress";
+type FlowPhase = "notEmpty" | "progress" | "error";
+
+/** CR-03/WR-03: distingue a causa do estado "error" para escolher a copy
+ * certa — `readFailed` (WR-03: pasta ilegível, ANTES misturado com o
+ * diagnóstico "pasta não vazia") vs `generic` (CR-03: timeout de inatividade
+ * OU qualquer rejeição não tratada de `createProjectSession`/`openProject`). */
+type FlowErrorKind = "readFailed" | "generic";
 
 interface CreateProjectFlowProps {
   onClose: () => void;
 }
 
+/** CR-03: erro dedicado para o caso de timeout — permite ao `catch` em
+ * `run()` reagir do mesmo jeito que qualquer outra rejeição (cai no estado
+ * "error" genérico), sem precisar de um tipo especial de tratamento; o que
+ * importa é que ele NUNCA deixa o loop de poll girando para sempre.
+ * Exportado só para o teste unitário dedicado (`CreateProjectFlow.test.tsx`)
+ * poder asserir o tipo exato lançado por `waitForPlanningDir` sem precisar
+ * montar o componente inteiro e esperar `POLL_TIMEOUT_MS` reais. */
+export class CreateProjectTimeoutError extends Error {}
+
 /** Poll simples, cancelável — resolve assim que `.planning/` existir sob
  * `root`, ou nunca resolve se `isCancelled()` virar `true` antes disso
- * (usuário fechou a home/desmontou o fluxo no meio do caminho). */
-async function waitForPlanningDir(root: string, isCancelled: () => boolean): Promise<void> {
+ * (usuário fechou a home/desmontou o fluxo no meio do caminho). CR-03:
+ * `isTimedOut()` é checado a cada volta — se a sessão fica `POLL_TIMEOUT_MS`
+ * sem NENHUMA atividade nova (nem bytes recebidos, nem `.planning/`
+ * aparecendo), o poll desiste lançando `CreateProjectTimeoutError` em vez
+ * de continuar indefinidamente. Deliberadamente um timeout de INATIVIDADE
+ * (resetado a cada byte recebido do terminal, ver `handleSessionBytes`),
+ * não um teto absoluto — um Q&A real e demorado com `/gsd-new-project`
+ * nunca deve ser punido só por o usuário levar tempo para responder,
+ * apenas uma sessão genuinamente travada/sem resposta alguma. */
+export async function waitForPlanningDir(
+  root: string,
+  isCancelled: () => boolean,
+  isTimedOut: () => boolean,
+): Promise<void> {
   while (!isCancelled()) {
     if (await exists(planningDir(root))) return;
+    if (isTimedOut()) {
+      throw new CreateProjectTimeoutError(
+        `Tempo esgotado aguardando .planning/ aparecer em ${root}`,
+      );
+    }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }
 }
@@ -73,6 +114,11 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
   const outputContainerRef = useRef<HTMLPreElement | null>(null);
   const [terminalOutput, setTerminalOutput] = useState("");
   const [terminalInput, setTerminalInput] = useState("");
+  // CR-03: marca de tempo da última atividade observada (byte recebido) —
+  // base do timeout de INATIVIDADE de `waitForPlanningDir` acima. Inicia no
+  // momento do mount (cobre o caso degenerado de nenhum byte jamais chegar).
+  const lastActivityAtRef = useRef(Date.now());
+  const [errorKind, setErrorKind] = useState<FlowErrorKind>("generic");
 
   useEffect(() => {
     // Auto-scroll para o fim a cada byte novo — mesma disciplina de
@@ -82,6 +128,7 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
   }, [terminalOutput]);
 
   function handleSessionBytes(data: Uint8Array) {
+    lastActivityAtRef.current = Date.now();
     const text = decoderRef.current.decode(data, { stream: true });
     setTerminalOutput((previous) => {
       const next = previous + text;
@@ -121,9 +168,16 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
       try {
         entries = await readDir(selected);
       } catch {
-        // Pasta ilegível — tratamento conservador: nunca spawna uma sessão
-        // numa pasta que nem conseguimos listar.
-        entries = [{}];
+        // WR-03 fix: pasta ilegível (ex.: sem permissão) é um diagnóstico
+        // DIFERENTE de "pasta não vazia" — antes desta correção, o catch
+        // forjava `entries = [{}]` só para cair no branch `notEmpty`
+        // abaixo, mostrando a copy errada ("pasta não está vazia") para
+        // quem na verdade bateu num problema de permissão de leitura.
+        if (!cancelledRef.current) {
+          setErrorKind("readFailed");
+          setPhase("error");
+        }
+        return;
       }
       if (cancelledRef.current) return;
 
@@ -132,22 +186,42 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
         return;
       }
 
-      setPhase("progress");
-      const sessionId = await useSessionStore
-        .getState()
-        .createProjectSession(selected, handleSessionBytes);
-      sessionIdRef.current = sessionId;
-      if (cancelledRef.current) return;
+      try {
+        setPhase("progress");
+        const sessionId = await useSessionStore
+          .getState()
+          .createProjectSession(selected, handleSessionBytes);
+        sessionIdRef.current = sessionId;
+        if (cancelledRef.current) return;
 
-      await waitForPlanningDir(selected, () => cancelledRef.current);
-      if (cancelledRef.current) return;
+        await waitForPlanningDir(
+          selected,
+          () => cancelledRef.current,
+          () => Date.now() - lastActivityAtRef.current > POLL_TIMEOUT_MS,
+        );
+        if (cancelledRef.current) return;
 
-      // Mesmo fluxo de um recente saudável clicado (openProject + view
-      // "board") — a criação bem-sucedida IS a tela de sucesso, sem passo
-      // intermediário (04-UI-SPEC.md ## Create-Project Flow item 4).
-      await useBoardStore.getState().openProject(selected);
-      useBoardStore.getState().setView("board");
-      onClose();
+        // Mesmo fluxo de um recente saudável clicado (openProject + view
+        // "board") — a criação bem-sucedida IS a tela de sucesso, sem passo
+        // intermediário (04-UI-SPEC.md ## Create-Project Flow item 4).
+        await useBoardStore.getState().openProject(selected);
+        useBoardStore.getState().setView("board");
+        onClose();
+      } catch {
+        // CR-03: qualquer rejeição não tratada daqui em diante (spawn
+        // falhou, `.planning/` nunca apareceu dentro do timeout de
+        // inatividade, `openProject` rejeitou) cai neste catch único —
+        // antes desta correção, `run()` não tinha `try`/`catch` nenhum ao
+        // redor deste trecho, e `void run()` (linha abaixo, fora deste
+        // escopo) não tinha `.catch()`, então uma rejeição virava uma
+        // promise rejeitada sem handler e o diálogo ficava preso no
+        // spinner de "progress" para sempre. Agora sempre transiciona para
+        // um estado visível com um jeito de sair.
+        if (!cancelledRef.current) {
+          setErrorKind("generic");
+          setPhase("error");
+        }
+      }
     }
 
     void run();
@@ -184,7 +258,11 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
         role="dialog"
         aria-modal="true"
         aria-label={
-          phase === "notEmpty" ? t("create.error.notEmpty.heading") : t("create.progress.heading")
+          phase === "notEmpty"
+            ? t("create.error.notEmpty.heading")
+            : phase === "error"
+              ? t(`create.error.${errorKind}.heading`)
+              : t("create.progress.heading")
         }
         style={{
           pointerEvents: "auto",
@@ -281,6 +359,30 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
                 }}
               />
             </form>
+            {/* CR-03: sem isso, o único jeito de sair de um "progress" preso
+               era matar o app inteiro — o `onClose` aqui NÃO mata a sessão
+               já criada (ela continua rodando em background), só devolve o
+               usuário à Home, exatamente a mesma semântica de "fechar o
+               diálogo" que as outras fases já oferecem. */}
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  padding: "var(--spacing-sm) var(--spacing-md)",
+                  borderRadius: 6,
+                  border: "1px solid var(--color-secondary)",
+                  backgroundColor: "transparent",
+                  color: "var(--color-foreground)",
+                  fontSize: "var(--font-size-body)",
+                  lineHeight: "var(--line-height-body)",
+                  fontWeight: "var(--font-weight-heading)",
+                  cursor: "pointer",
+                }}
+              >
+                {t("create.progress.cancel")}
+              </button>
+            </div>
           </>
         ) : (
           <>
@@ -293,7 +395,11 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
                 margin: 0,
               }}
             >
-              {t("create.error.notEmpty.heading")}
+              {t(
+                phase === "notEmpty"
+                  ? "create.error.notEmpty.heading"
+                  : `create.error.${errorKind}.heading`,
+              )}
             </h2>
             <p
               style={{
@@ -304,7 +410,11 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
                 margin: 0,
               }}
             >
-              {t("create.error.notEmpty.body")}
+              {t(
+                phase === "notEmpty"
+                  ? "create.error.notEmpty.body"
+                  : `create.error.${errorKind}.body`,
+              )}
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
@@ -322,7 +432,11 @@ export function CreateProjectFlow({ onClose }: CreateProjectFlowProps) {
                   cursor: "pointer",
                 }}
               >
-                {t("create.error.notEmpty.dismiss")}
+                {t(
+                  phase === "notEmpty"
+                    ? "create.error.notEmpty.dismiss"
+                    : `create.error.${errorKind}.dismiss`,
+                )}
               </button>
             </div>
           </>

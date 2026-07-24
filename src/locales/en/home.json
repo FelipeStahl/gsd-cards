@@ -27,12 +27,23 @@
       "body": "Running /gsd-new-project in the session. Watch the terminal.",
       "terminalLabel": "/gsd-new-project session output",
       "terminalPlaceholder": "Waiting for session output…",
-      "inputPlaceholder": "Type and press Enter to reply"
+      "inputPlaceholder": "Type and press Enter to reply",
+      "cancel": "Cancel"
     },
     "error": {
       "notEmpty": {
         "heading": "Folder is not empty",
         "body": "Choose an empty or new folder to create a GSD project from scratch.",
+        "dismiss": "OK"
+      },
+      "readFailed": {
+        "heading": "Couldn't read that folder",
+        "body": "Check the chosen folder's permissions and try again.",
+        "dismiss": "OK"
+      },
+      "generic": {
+        "heading": "Couldn't create the project",
+        "body": "Something went wrong running /gsd-new-project — the session may have stalled or failed to start. Try again.",
         "dismiss": "OK"
       }
     }
