@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: board-interativo
 status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-07-24T02:46:15.095Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-07-24T02:56:36.440Z"
 last_activity: 2026-07-24
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-22)
 ## Current Position
 
 Phase: 03 (board-interativo) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-07-24 — Phase 03 execution started
 
-Progress: [█████████░] 89%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: [█████████░] 89%
 | Phase 03 P01 | 21min | 3 tasks | 13 files |
 | Phase 03 P02 | 6min | 2 tasks | 2 files |
 | Phase 03 P03 | 8min | 3 tasks | 9 files |
+| Phase 03 P04 | 33min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03-02]: Package legitimacy checkpoint for strip-ansi resolved via orchestrator pre-authorization (SUS verdict was a sandbox download-telemetry gap, publisher sindresorhus/chalk, no red flags)
 - [Phase ?]: [Phase 03-03]: classifyActivity nunca retorna idle - so busy/awaiting/null; idle e responsabilidade exclusiva do caller (wireTerminalActivity) via timer de quiescencia, ja que silencio nao e observavel a partir de uma unica string
 - [Phase ?]: [Phase 03-03]: wireTerminalActivity chama clearActivityHandler incondicionalmente no teardown do effect do TerminalView (unmount E troca de sessao) - redundante-mas-seguro com o delete que killSession ja faz no mesmo mapa
+- [Phase ?]: [Phase 03-04]: undefined activity treated as idle everywhere (resolveInjection + ActivityDot fallback), not just in the resolver
+- [Phase ?]: [Phase 03-04]: DetailPanel's send-to caption splits board.actions.sendTo around a private marker string to give the session-id substring its own JetBrains Mono span, without a new i18n key
 
 ### Pending Todos
 
@@ -152,6 +155,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T02:46:15.081Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-07-24T02:56:36.420Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None

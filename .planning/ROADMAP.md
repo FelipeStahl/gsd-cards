@@ -112,7 +112,7 @@ Plans:
   3. O app detecta o estado do terminal (ocioso/ocupado/aguardando permissão) e não injeta comandos enquanto o Claude está ocupado.
   4. Usuário aciona atalhos GSD (paleta/botões de comandos `/gsd-*`) no drawer junto ao terminal.
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 Plans:
 **Wave 1**
 
@@ -125,7 +125,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 03-04-PLAN.md — Matriz de injeção (`resolveInjection`), guard 3-estados no card, dot de atividade e ação no DetailPanel (ACT-01/ACT-02/ACT-03)
+- [x] 03-04-PLAN.md — Matriz de injeção (`resolveInjection`), guard 3-estados no card, dot de atividade e ação no DetailPanel (ACT-01/ACT-02/ACT-03)
 
 **Wave 4** *(blocked on Wave 3)*
 
@@ -174,6 +174,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Espelho fiel | 8/8 | In Progress|  |
 | 2. Sessão viva | 6/6 | In Progress|  |
-| 3. Board interativo | 3/5 | In Progress|  |
+| 3. Board interativo | 4/5 | In Progress|  |
 | 4. Casa persistente | 0/TBD | Not started | - |
 | 5. Comunidade | 0/TBD | Not started | - |
