@@ -140,3 +140,66 @@ describe("setSessionBytesHandler (redirecionamento do foco — SESS-03)", () => 
     expect(freshHandlerCalls).toHaveLength(1);
   });
 });
+
+describe("activityHandlers (segundo consumidor sempre-ativo — ACT-03)", () => {
+  it("um activity handler sobrevive a um swap de setSessionBytesHandler (foco)", async () => {
+    const { setActivityHandler, setSessionBytesHandler } = await import("./channel");
+    const sessionId = freshSessionId();
+    invokeMock.mockResolvedValue(undefined);
+
+    const activityReceived: Uint8Array[] = [];
+    await spawnSession(sessionId, "/repo", () => {});
+    const [, args] = invokeMock.mock.calls[0] as [string, { onEvent: FakeChannel<unknown> }];
+
+    setActivityHandler(sessionId, (bytes) => activityReceived.push(bytes));
+
+    args.onEvent.onmessage?.([1]);
+    expect(activityReceived).toHaveLength(1);
+
+    // Troca de foco (bytesHandlers) NÃO deve remover/afetar o activity handler.
+    const bytesRedirected: Uint8Array[] = [];
+    setSessionBytesHandler(sessionId, (bytes) => bytesRedirected.push(bytes));
+
+    args.onEvent.onmessage?.([2]);
+    expect(bytesRedirected).toHaveLength(1);
+    expect(activityReceived).toHaveLength(2); // continua recebendo, independente do foco
+  });
+
+  it("clearActivityHandler para de entregar bytes ao callback", async () => {
+    const { setActivityHandler, clearActivityHandler } = await import("./channel");
+    const sessionId = freshSessionId();
+    invokeMock.mockResolvedValue(undefined);
+
+    const activityReceived: Uint8Array[] = [];
+    await spawnSession(sessionId, "/repo", () => {});
+    const [, args] = invokeMock.mock.calls[0] as [string, { onEvent: FakeChannel<unknown> }];
+
+    setActivityHandler(sessionId, (bytes) => activityReceived.push(bytes));
+    args.onEvent.onmessage?.([1]);
+    expect(activityReceived).toHaveLength(1);
+
+    clearActivityHandler(sessionId);
+    args.onEvent.onmessage?.([2]);
+    expect(activityReceived).toHaveLength(1); // não recebeu mais nada
+  });
+
+  it("killSession remove o handler de AMBOS os mapas (bytesHandlers e activityHandlers)", async () => {
+    const { setActivityHandler, setSessionBytesHandler } = await import("./channel");
+    const sessionId = freshSessionId();
+    invokeMock.mockResolvedValueOnce(undefined);
+
+    const bytesReceived: Uint8Array[] = [];
+    const activityReceived: Uint8Array[] = [];
+    await spawnSession(sessionId, "/repo", (bytes) => bytesReceived.push(bytes));
+    setSessionBytesHandler(sessionId, (bytes) => bytesReceived.push(bytes));
+    setActivityHandler(sessionId, (bytes) => activityReceived.push(bytes));
+    const [, args] = invokeMock.mock.calls[0] as [string, { onEvent: FakeChannel<unknown> }];
+
+    invokeMock.mockResolvedValueOnce(undefined);
+    await killSession(sessionId);
+
+    args.onEvent.onmessage?.([9]);
+    expect(bytesReceived).toHaveLength(0);
+    expect(activityReceived).toHaveLength(0);
+  });
+});

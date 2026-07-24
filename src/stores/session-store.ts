@@ -19,6 +19,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { createLiveSessionState, type LiveSessionState } from "../components/terminal/focus-algorithm";
 import { killSession as killSessionProcess } from "../pty/channel";
+import type { TerminalActivity } from "../pty/activity";
 import { listSessions, type SessionSignal } from "../sessions/discover";
 import { useBoardStore } from "./board-store";
 
@@ -62,6 +63,13 @@ export interface SessionDescriptor {
   id: string;
   lastModified: Date | null;
   origin: SessionOrigin;
+  /**
+   * Estado de atividade do terminal ao vivo (ACT-03) — `idle`/`busy`/
+   * `awaiting`, populado por `wireTerminalActivity` via `setActivity`
+   * abaixo. `undefined` até a primeira classificação (sessão histórica
+   * nunca recebe este campo — nunca tem `PtySession` viva a observar).
+   */
+  activity?: TerminalActivity;
 }
 
 interface SessionStoreState {
@@ -102,6 +110,16 @@ interface SessionStoreState {
    */
   discoverSessions: (projectRoot: string) => Promise<void>;
   setError: (error: SessionError | null) => void;
+  /**
+   * Atualiza `SessionDescriptor.activity` (ACT-03) — TRANSITION-GATED: só
+   * chama `set()` quando o valor efetivamente muda, nunca por byte
+   * recebido. Preserva o invariante "bytes de sessão em background nunca
+   * disparam re-render" (Fase 2, `liveSessions` fora do shape immer) mesmo
+   * agora que todo byte de toda sessão viva passa por um consumidor
+   * sempre-ativo (`activityHandlers`, `channel.ts`). No-op silencioso se o
+   * id não existir em `sessions[]` (sessão já encerrada/nunca registrada).
+   */
+  setActivity: (sessionId: string, activity: TerminalActivity) => void;
 }
 
 /** Normaliza qualquer erro (tagged `{ kind, message }` vindo do Rust, ou um `Error`/valor desconhecido) para `SessionError`. Mesmo padrão de `toStoreError` em `board-store.ts`. */
@@ -237,6 +255,17 @@ export const useSessionStore = create<SessionStoreState>()(
     setError: (error: SessionError | null) => {
       set((state) => {
         state.error = error;
+      });
+    },
+
+    setActivity: (sessionId: string, activity: TerminalActivity) => {
+      const current = get().sessions.find((session) => session.id === sessionId);
+      // No-op se a sessão não existe OU se o valor não mudou — nenhuma das
+      // duas condições deve produzir uma transição reativa do zustand.
+      if (!current || current.activity === activity) return;
+      set((state) => {
+        const descriptor = state.sessions.find((session) => session.id === sessionId);
+        if (descriptor) descriptor.activity = activity;
       });
     },
   })),

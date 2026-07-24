@@ -35,6 +35,17 @@ function toBytes(message: RawChannelMessage): Uint8Array {
 const bytesHandlers = new Map<string, (data: Uint8Array) => void>();
 
 /**
+ * SEGUNDO mapa de handlers, independente do `bytesHandlers` acima — sempre
+ * ativo para toda sessão viva, nunca redirecionado por troca de foco
+ * (`redirectToTerminal`/`redirectToBackground` em `focus-algorithm.ts` só
+ * tocam `bytesHandlers`). Consumido por `useTerminalActivity.ts` (ACT-03,
+ * `03-RESEARCH.md` Pattern 2, load-bearing): a classificação de atividade
+ * precisa de bytes mesmo para sessões em background, que é exatamente onde
+ * `bytesHandlers` para de entregar bytes ao perder foco (Pitfall 1).
+ */
+const activityHandlers = new Map<string, (data: Uint8Array) => void>();
+
+/**
  * Cria um `Channel` dedicado a esta sessão e pede ao backend para subir o
  * `claude` num PTY real no `cwd` fornecido. `cwd` DEVE ser o `root` já
  * canonicalizado por `validateProjectRoot` (Fase 1) — nunca um caminho cru
@@ -48,7 +59,9 @@ export function spawnSession(
   const onEvent = new Channel<RawChannelMessage>();
   bytesHandlers.set(sessionId, onBytes);
   onEvent.onmessage = (message) => {
-    bytesHandlers.get(sessionId)?.(toBytes(message));
+    const bytes = toBytes(message);
+    bytesHandlers.get(sessionId)?.(bytes);
+    activityHandlers.get(sessionId)?.(bytes); // sempre dispara, independente de foco
   };
   return invoke("spawn_session", { sessionId, cwd, onEvent });
 }
@@ -65,6 +78,20 @@ export function setSessionBytesHandler(
   onBytes: (data: Uint8Array) => void,
 ): void {
   bytesHandlers.set(sessionId, onBytes);
+}
+
+/**
+ * Registra o callback sempre-ativo de classificação de atividade (ACT-03) —
+ * NUNCA sobrescrito por `setSessionBytesHandler`/troca de foco. Chamado por
+ * `useTerminalActivity.ts::wireTerminalActivity` uma vez por sessão.
+ */
+export function setActivityHandler(sessionId: string, onBytes: (data: Uint8Array) => void): void {
+  activityHandlers.set(sessionId, onBytes);
+}
+
+/** Para de entregar bytes ao callback de atividade — chamado no cleanup de `wireTerminalActivity` (unmount/troca de sessão), além de `killSession` abaixo. */
+export function clearActivityHandler(sessionId: string): void {
+  activityHandlers.delete(sessionId);
 }
 
 /** Envia texto digitado/colado no terminal de volta ao processo (stdin do PTY). */
@@ -91,7 +118,10 @@ export async function killSession(sessionId: string): Promise<void> {
   } finally {
     // Sem isso, o handler de bytes desta sessão (e o buffer que ele
     // eventualmente empilha) vazaria indefinidamente no mapa deste módulo
-    // mesmo depois do processo morrer (T-02-02).
+    // mesmo depois do processo morrer (T-02-02). Mesma disciplina aplicada
+    // ao segundo mapa (`activityHandlers`) — sem o delete aqui, o callback
+    // de classificação de atividade de uma sessão morta vazaria também.
     bytesHandlers.delete(sessionId);
+    activityHandlers.delete(sessionId);
   }
 }

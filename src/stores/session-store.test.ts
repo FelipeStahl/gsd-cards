@@ -187,6 +187,53 @@ describe("archiveSession (SESS-06 — Arquivar/Excluir)", () => {
   });
 });
 
+describe("setActivity (ACT-03 — transition-gated)", () => {
+  it("atualiza SessionDescriptor.activity quando o valor muda", () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+
+    useSessionStore.getState().setActivity(id, "busy");
+
+    const session = useSessionStore.getState().sessions.find((s) => s.id === id);
+    expect(session?.activity).toBe("busy");
+  });
+
+  it("chamar com o mesmo valor duas vezes não produz uma nova transição de store (sessions[] mantém a mesma referência)", () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+
+    useSessionStore.getState().setActivity(id, "busy");
+    const sessionsAfterFirst = useSessionStore.getState().sessions;
+
+    useSessionStore.getState().setActivity(id, "busy");
+    const sessionsAfterSecond = useSessionStore.getState().sessions;
+
+    expect(sessionsAfterSecond).toBe(sessionsAfterFirst); // sem set() na segunda chamada
+  });
+
+  it("chamar com um valor diferente atualiza o descriptor e produz uma nova transição", () => {
+    openProjectAt("/repo");
+    const id = useSessionStore.getState().createSession() as string;
+
+    useSessionStore.getState().setActivity(id, "busy");
+    const sessionsAfterBusy = useSessionStore.getState().sessions;
+
+    useSessionStore.getState().setActivity(id, "awaiting");
+    const sessionsAfterAwaiting = useSessionStore.getState().sessions;
+
+    expect(sessionsAfterAwaiting).not.toBe(sessionsAfterBusy);
+    const session = useSessionStore.getState().sessions.find((s) => s.id === id);
+    expect(session?.activity).toBe("awaiting");
+  });
+
+  it("é um no-op seguro para um id de sessão desconhecido/ausente", () => {
+    expect(() => useSessionStore.getState().setActivity("sessao-inexistente", "busy")).not.toThrow();
+    expect(
+      useSessionStore.getState().sessions.find((s) => s.id === "sessao-inexistente"),
+    ).toBeUndefined();
+  });
+});
+
 describe("toSessionError", () => {
   it("normaliza um erro tagged { kind, message } vindo do Rust", () => {
     expect(toSessionError({ kind: "NotFound", message: "sessão x" })).toEqual({
