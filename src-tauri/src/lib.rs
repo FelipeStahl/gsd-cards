@@ -33,6 +33,16 @@ pub fn run() {
         // já neste plano-tracer junto com o store para não reabrir o gate de
         // legitimidade de pacote duas vezes.
         .plugin(tauri_plugin_notification::init())
+        // Auto-atualização assinada (DIST-03, 05-02-PLAN.md) — só as duas
+        // capabilities granulares que o frontend chama de fato: verificar
+        // (`updater:allow-check`) e baixar+instalar (`updater:allow-download-and-install`),
+        // nunca o bundle catch-all `updater:default` (mesma disciplina do
+        // store/notification acima).
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        // Relançar o app após instalar o update (`process:allow-restart`) —
+        // registrado junto com o updater para não reabrir o gate de
+        // legitimidade de pacote duas vezes (05-02-PLAN.md Task 1).
+        .plugin(tauri_plugin_process::init())
         .manage(planning_watcher::WatcherState::default())
         .manage(pty::PtyManager::default())
         .invoke_handler(tauri::generate_handler![
